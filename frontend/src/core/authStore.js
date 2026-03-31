@@ -25,13 +25,14 @@ export class AuthStore {
     removeValue(USER_ROLE_KEY);
   }
 
-  async login(username, pin) {
+  async login(username, password) {
     try {
       const data = await this.rootStore.apiClient.post(
         '/auth/login',
-        { username, pin },
+        { username, password },
         { suppressUnauthorizedHandler: true }
       );
+
 
       this.currentUser = data;
       this.userRole = data.role;

@@ -3,6 +3,9 @@ const prisma = require('../config/prisma');
 const { toMongoJSON } = require('../mappers/prismaMapper');
 const { env } = require('../config/env');
 
+const NodeCache = require('node-cache');
+const userCache = new NodeCache({ stdTTL: 120, checkperiod: 60 });
+
 const unauthorized = (res, requestId, message, code = 'UNAUTHORIZED') => res.status(401).json({
   success: false,
   error: {
@@ -11,6 +14,8 @@ const unauthorized = (res, requestId, message, code = 'UNAUTHORIZED') => res.sta
     requestId,
   },
 });
+
+
 
 const protect = async (req, res, next) => {
   let token;
@@ -25,18 +30,49 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, env.jwtSecret);
+    
+    // Check Cache First
+    const cachedUser = userCache.get(decoded.id);
+    if (cachedUser) {
+      req.user = cachedUser;
+      return next();
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, username: true, role: true, createdAt: true, updatedAt: true }
+      select: { id: true, username: true, role: true, isActive: true, createdAt: true, updatedAt: true }
     });
     
-    req.user = toMongoJSON(user);
-
-    if (!req.user) {
+    if (!user) {
       return unauthorized(res, req.requestId, 'User no longer exists. Please re-authenticate.');
     }
 
+    if (!user.isActive) {
+      return unauthorized(res, req.requestId, 'Account has been suspended.', 'ACCOUNT_SUSPENDED');
+    }
+
+    const jsonUser = toMongoJSON(user);
+    
+    // Update Cache
+    userCache.set(decoded.id, jsonUser);
+
+
+    // Refresh lastActiveAt (Rate limited to once per 10 mins)
+    const lastUpdate = userCache.get(`active_${decoded.id}`);
+    const TEN_MINS = 10 * 60 * 1000;
+
+    if (!lastUpdate || (Date.now() - lastUpdate > TEN_MINS)) {
+      userCache.set(`active_${decoded.id}`, Date.now());
+      prisma.user.update({
+        where: { id: decoded.id },
+        data: { lastActiveAt: new Date() }
+      }).catch(err => {}); // Silent catch for background update
+    }
+
+    req.user = jsonUser;
     return next();
+
+
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
       return unauthorized(res, req.requestId, 'Token expired. Please log in again.', 'TOKEN_EXPIRED');

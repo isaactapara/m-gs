@@ -17,21 +17,9 @@ function renderHome() {
   const isDarkMode = store.isDarkMode;
   const settings = store.settings;
   
-  // Calculate frequencies
-  const sellCounts = {};
-  store.bills.forEach(bill => {
-    bill.items.forEach(item => {
-      const itemKey = item.menuItemId || item.id || item._id || item.name;
-      sellCounts[itemKey] = (sellCounts[itemKey] || 0) + item.quantity;
-    });
-  });
+  // Sort menu by frequency (descending) - backend already does this but we'll slice the top 5
+  const topItems = store.menu.slice(0, 5);
 
-  // Sort menu by frequency (descending)
-  const topItems = [...store.menu].sort((a, b) => {
-    const aKey = a.id || a._id || a.name;
-    const bKey = b.id || b._id || b.name;
-    return (sellCounts[bKey] || 0) - (sellCounts[aKey] || 0);
-  }).slice(0, 5);
 
   const allBills = store.userRole === 'owner' 
       ? store.bills 

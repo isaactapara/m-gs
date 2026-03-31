@@ -10,6 +10,14 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     rollupOptions: {
       input: [
@@ -25,3 +33,4 @@ export default defineConfig({
   },
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
+

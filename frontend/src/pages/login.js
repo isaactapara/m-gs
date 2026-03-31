@@ -43,14 +43,14 @@ function renderLogin() {
 
             <div class="space-y-2">
               <label class="block text-xs font-black uppercase tracking-widest ml-1 ${isDarkMode ? "text-gray-400" : "text-gray-400"}">
-                Security PIN
+                Password
               </label>
               <div class="relative group">
                 <i data-lucide="lock" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#FF0000] transition-colors"></i>
                 <input 
                   type="${showPassword ? 'text' : 'password'}" 
                   id="password"
-                  placeholder="Enter security PIN"
+                  placeholder="Enter secure password"
                   class="w-full pl-14 pr-14 py-5 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black border border-neutral-800 text-white" : "bg-gray-100 border-transparent text-gray-900"}"
                 />
                 <button 
@@ -117,18 +117,19 @@ function attachListeners() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value.trim().toLowerCase();
-    const pin = document.getElementById('password').value;
+    const password = document.getElementById('password').value;
 
-    const result = await store.login(username, pin);
+    const result = await store.login(username, password);
     
     if (result.success) {
       window.location.href = '/';
     } else {
-      errorDiv.textContent = result.message || 'Invalid username or PIN. Please try again.';
+      errorDiv.textContent = result.message || 'Invalid username or password. Please try again.';
       errorDiv.classList.remove('hidden');
     }
   });
 }
+
 
 // Initial render
 renderLogin();

@@ -8,25 +8,27 @@ const usernameRule = body('username')
   .matches(/^[a-zA-Z0-9._-]+$/)
   .withMessage('Username may only contain letters, numbers, dots, underscores, or hyphens');
 
-const pinRule = body('pin')
+const passwordRule = body('password')
   .isString()
-  .withMessage('PIN is required')
-  .matches(/^\d{4,8}$/)
-  .withMessage('PIN must be 4 to 8 digits');
+  .withMessage('Password is required')
+  .isLength({ min: 8 })
+  .withMessage('Password must be at least 8 characters');
 
 const loginValidators = [
   usernameRule,
-  pinRule,
+  passwordRule,
 ];
+
 
 const registerValidators = [
   usernameRule,
-  pinRule,
+  passwordRule,
   body('role')
     .optional()
     .isIn(['owner', 'cashier'])
     .withMessage('Role must be owner or cashier'),
 ];
+
 
 const deleteUserValidators = [
   mongoIdParam('id'),

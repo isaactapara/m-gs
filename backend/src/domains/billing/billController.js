@@ -72,22 +72,40 @@ const createBill = asyncHandler(async (req, res) => {
 
   const billNumber = await generateBillNumber();
 
-  const bill = await prisma.bill.create({
-    data: {
-      billNumber,
-      total: computedTotal,
-      paymentMethod: req.body.paymentMethod,
-      status: req.body.status || 'PENDING',
-      cashier: req.user.username,
-      cashierId: req.user._id || req.user.id,
-      items: {
-        create: items
-      }
-    },
-    include: { items: true }
+  const bill = await prisma.$transaction(async (tx) => {
+    // 1. Create the bill
+    const newBill = await tx.bill.create({
+      data: {
+        billNumber,
+        total: computedTotal,
+        paymentMethod: req.body.paymentMethod,
+        status: req.body.status || 'PENDING',
+        cashier: req.user.username,
+        cashierId: req.user._id || req.user.id,
+        items: {
+          create: items
+        }
+      },
+      include: { items: true }
+    });
+
+    // 2. Increment soldCount for each valid menuItemId (Resilient to defunct IDs)
+    const uniqueItems = Array.from(new Set(items.filter(i => i.menuItemId).map(i => i.menuItemId)));
+    
+    for (const id of uniqueItems) {
+      const quantity = items.filter(i => i.menuItemId === id).reduce((s, i) => s + i.quantity, 0);
+      await tx.menuItem.updateMany({
+        where: { id },
+        data: { soldCount: { increment: quantity } }
+      });
+    }
+
+    return newBill;
+
   });
 
   const parsedBill = mapBillForFrontend(bill);
+
 
   logger.info('bill_created', {
     requestId: req.requestId,

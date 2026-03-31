@@ -4,6 +4,8 @@ const {
   registerUser,
   getUsers,
   deleteUser,
+  updatePassword,
+  toggleUserStatus,
 } = require('./authController');
 const { protect, ownerOnly } = require('../../middlewares/auth');
 const validateRequest = require('../../middlewares/validateRequest');
@@ -19,7 +21,10 @@ const router = express.Router();
 router.post('/login', authLimiter, loginValidators, validateRequest, loginUser);
 router.post('/register', protect, ownerOnly, registerValidators, validateRequest, registerUser);
 router.get('/users', protect, ownerOnly, getUsers);
+router.patch('/change-password', protect, updatePassword);
+router.patch('/users/:id/toggle-status', protect, ownerOnly, toggleUserStatus);
 router.delete('/users/:id', protect, ownerOnly, deleteUserValidators, validateRequest, deleteUser);
 router.get('/health', (req, res) => res.json({ status: 'ok' }));
+
 
 module.exports = router;

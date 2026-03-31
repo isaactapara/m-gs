@@ -28,6 +28,8 @@ const startLocalTunnel = async () => {
   }
 };
 
+const { warmupCache } = require('./domains/menu/menuController');
+
 const startServer = async () => {
   app.listen(env.port, async () => {
     logger.info('server_started', {
@@ -35,9 +37,12 @@ const startServer = async () => {
       nodeEnv: env.nodeEnv,
     });
 
-    await startLocalTunnel();
+    // Background Warmup (Non-blocking)
+    warmupCache();
+    startLocalTunnel();
 
     setInterval(async () => {
+
       try {
         const reconciled = await reconcilePendingTransactions();
         if (reconciled > 0) {

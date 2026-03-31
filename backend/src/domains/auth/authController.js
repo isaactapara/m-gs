@@ -15,16 +15,19 @@ const safeEntityId = (id) => id ? String(id).substring(0, 24) : null;
 const loginUser = asyncHandler(async (req, res) => {
   const normalizedUsername = String(req.body.username).toLowerCase().trim();
   const user = await prisma.user.findUnique({ where: { username: normalizedUsername } });
-  const isValid = user ? await bcrypt.compare(req.body.pin, user.pin) : false;
+  
+  // Check if user exists and password is valid
+  const isValid = user ? await bcrypt.compare(req.body.password, user.password) : false;
 
   if (!user || !isValid) {
-    await recordAuditEvent({
+    // Non-blocking audit record
+    recordAuditEvent({
       req,
       action: 'auth.login',
       status: 'FAILED',
       metadata: { username: normalizedUsername },
       actor: { actorId: null, actorUsername: normalizedUsername, actorRole: 'anonymous' },
-    });
+    }).catch(err => logger.error('login_audit_failed', { error: err.message }));
 
     logger.security('auth_login_failed', {
       requestId: req.requestId,
@@ -32,18 +35,26 @@ const loginUser = asyncHandler(async (req, res) => {
       ip: req.ip,
     });
 
-    throw new AppError('Invalid username or PIN', 401, 'INVALID_CREDENTIALS');
+    throw new AppError('Invalid username or password', 401, 'INVALID_CREDENTIALS');
   }
+
+  // Check if account is active
+  if (!user.isActive) {
+    throw new AppError('Your account has been suspended. Please contact the owner.', 403, 'ACCOUNT_SUSPENDED');
+  }
+
 
   const safeUserId = safeEntityId(user.id);
 
-  await recordAuditEvent({
+  // Non-blocking audit record
+  recordAuditEvent({
     req,
     action: 'auth.login',
     entityType: 'User',
     entityId: safeUserId,
     metadata: { username: user.username },
-  });
+  }).catch(err => logger.error('login_audit_failed', { error: err.message }));
+
 
   logger.info('auth_login_succeeded', {
     requestId: req.requestId,
@@ -73,15 +84,16 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const salt = await bcrypt.genSalt(10);
-  const hashedPin = await bcrypt.hash(req.body.pin, salt);
+  const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
   const user = await prisma.user.create({
     data: {
       username: normalizedUsername,
-      pin: hashedPin,
+      password: hashedPassword,
       role: req.body.role || 'cashier',
     },
   });
+
 
   await recordAuditEvent({
     req,
@@ -104,11 +116,69 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const getUsers = asyncHandler(async (req, res) => {
   const users = await prisma.user.findMany({
-    select: { id: true, username: true, role: true, createdAt: true, updatedAt: true },
+    select: { id: true, username: true, role: true, isActive: true, createdAt: true, updatedAt: true },
     orderBy: { createdAt: 'desc' }
   });
   res.json(users.map(toMongoJSON));
 });
+
+const updatePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+  if (!isMatch) {
+    throw new AppError('Current password is incorrect', 401, 'INVALID_PASSWORD');
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: { password: hashedPassword }
+  });
+
+  await recordAuditEvent({
+    req,
+    action: 'user.password_changed',
+    entityType: 'User',
+    entityId: req.user.id,
+    metadata: { username: user.username },
+  });
+
+  res.json({ message: 'Password updated successfully' });
+});
+
+const toggleUserStatus = asyncHandler(async (req, res) => {
+  const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+
+  if (!user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  if (user.role === 'owner') {
+    throw new AppError('Cannot suspend owner', 400, 'OWNER_SUSPEND_FORBIDDEN');
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: req.params.id },
+    data: { isActive: !user.isActive }
+  });
+
+  await recordAuditEvent({
+    req,
+    action: user.isActive ? 'staff.suspended' : 'staff.activated',
+    entityType: 'User',
+    entityId: req.params.id,
+    metadata: { username: user.username },
+  });
+
+  res.json({
+    message: `User ${updatedUser.isActive ? 'activated' : 'suspended'} successfully`,
+    isActive: updatedUser.isActive
+  });
+});
+
 
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.params.id } });
@@ -142,4 +212,7 @@ module.exports = {
   registerUser,
   getUsers,
   deleteUser,
+  updatePassword,
+  toggleUserStatus,
 };
+

@@ -31,8 +31,7 @@ const buildTrend = (timeframe, bills) => {
       trend.push({
         key: slot,
         label: `${String(slot * 2).padStart(2, '0')}:00`,
-        settledRevenue: 0,
-        pendingTotal: 0,
+        totalSales: 0,
       });
     }
 
@@ -44,12 +43,7 @@ const buildTrend = (timeframe, bills) => {
       if (!trend[bucket]) return;
 
       const total = Number(bill.total) || 0;
-
-      if (SETTLED_STATUSES.includes(bill.status)) {
-        trend[bucket].settledRevenue += total;
-      } else if (bill.status === 'PENDING') {
-        trend[bucket].pendingTotal += total;
-      }
+      trend[bucket].totalSales += total;
     });
 
     return trend;
@@ -60,8 +54,7 @@ const buildTrend = (timeframe, bills) => {
       trend.push({
         key: week,
         label: `Week ${week + 1}`,
-        settledRevenue: 0,
-        pendingTotal: 0,
+        totalSales: 0,
       });
     }
 
@@ -74,12 +67,7 @@ const buildTrend = (timeframe, bills) => {
       if (!trend[bucket]) return;
 
       const total = Number(bill.total) || 0;
-
-      if (SETTLED_STATUSES.includes(bill.status)) {
-        trend[bucket].settledRevenue += total;
-      } else if (bill.status === 'PENDING') {
-        trend[bucket].pendingTotal += total;
-      }
+      trend[bucket].totalSales += total;
     });
 
     return trend;
@@ -92,8 +80,7 @@ const buildTrend = (timeframe, bills) => {
       key: dayOffset,
       label: day.toLocaleDateString('en-US', { weekday: 'short' }),
       isoDate: day.toISOString().slice(0, 10),
-      settledRevenue: 0,
-      pendingTotal: 0,
+      totalSales: 0,
     });
   }
 
@@ -106,12 +93,7 @@ const buildTrend = (timeframe, bills) => {
     if (!trend[bucket]) return;
 
     const total = Number(bill.total) || 0;
-
-    if (SETTLED_STATUSES.includes(bill.status)) {
-      trend[bucket].settledRevenue += total;
-    } else if (bill.status === 'PENDING') {
-      trend[bucket].pendingTotal += total;
-    }
+    trend[bucket].totalSales += total;
   });
 
   return trend;
@@ -134,40 +116,35 @@ const getReportSummary = async ({ timeframe = 'week', user }) => {
 
   const summary = bills.reduce((acc, bill) => {
     const total = Number(bill.total) || 0;
-    
-    if (SETTLED_STATUSES.includes(bill.status)) {
-      acc.settledRevenue += total;
-      acc.settledCount += 1;
-    } else if (bill.status === 'PENDING') {
-      acc.pendingTotal += total;
-      acc.pendingCount += 1;
-    } else if (bill.status === 'FAILED' || bill.status === 'CANCELLED') {
-      acc.failedTotal += total;
-      acc.failedCount += 1;
-    } else if (bill.status === 'PARTIAL_PAYMENT_FLAGGED') {
-      acc.anomalyTotal += total;
-      acc.anomalyCount += 1;
-    }
-
+    acc.totalSales += total;
+    acc.billCount += 1;
     return acc;
   }, {
-    settledRevenue: 0,
-    pendingTotal: 0,
-    failedTotal: 0,
-    anomalyTotal: 0,
-    settledCount: 0,
-    pendingCount: 0,
-    failedCount: 0,
-    anomalyCount: 0,
+    totalSales: 0,
+    billCount: 0,
+  });
+
+  // Calculate active users (last 5 minutes)
+  const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
+  const activeUsers = await prisma.user.findMany({
+    where: { lastActiveAt: { gte: activeThreshold } },
+    select: { username: true }
   });
 
   return {
     timeframe,
     range,
-    summary,
+    summary: {
+      ...summary,
+      activeUsersCount: activeUsers.length,
+      activeUsernames: activeUsers.map(u => u.username)
+    },
     trend: buildTrend(timeframe, bills),
   };
 };
+
+
+
 
 module.exports = {
   getReportSummary,

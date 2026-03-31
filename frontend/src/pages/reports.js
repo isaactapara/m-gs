@@ -99,13 +99,12 @@ window.exportToPDF = async () => {
     yPos += 10;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    doc.text(`Settled Revenue: ${currency()} ${Number(summary.settledRevenue || 0).toLocaleString()}`, margins, yPos);
+    doc.text(`Total Revenue: ${currency()} ${Number(summary.totalSales || 0).toLocaleString()}`, margins, yPos);
     yPos += 7;
-    doc.text(`Pending Total: ${currency()} ${Number(summary.pendingTotal || 0).toLocaleString()}`, margins, yPos);
+    doc.text(`Total Bills: ${summary.billCount || 0}`, margins, yPos);
     yPos += 7;
-    doc.text(`Failed / Cancelled: ${currency()} ${Number(summary.failedTotal || 0).toLocaleString()}`, margins, yPos);
-    yPos += 7;
-    doc.text(`Anomaly Total: ${currency()} ${Number(summary.anomalyTotal || 0).toLocaleString()}`, margins, yPos);
+    doc.text(`Active Staff: ${summary.activeUsersCount || 0}`, margins, yPos);
+
 
     yPos += 12;
     doc.setFont('helvetica', 'bold');
@@ -116,8 +115,7 @@ window.exportToPDF = async () => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text('Period', margins, yPos);
-    doc.text('Settled', margins + 80, yPos);
-    doc.text('Pending', margins + 130, yPos);
+    doc.text('Total Sales', margins + 100, yPos);
 
     yPos += 4;
     doc.line(margins, yPos, 210 - margins, yPos);
@@ -130,8 +128,7 @@ window.exportToPDF = async () => {
       }
 
       doc.text(entry.label, margins, yPos);
-      doc.text(`${currency()} ${Number(entry.settledRevenue || 0).toLocaleString()}`, margins + 80, yPos);
-      doc.text(`${currency()} ${Number(entry.pendingTotal || 0).toLocaleString()}`, margins + 130, yPos);
+      doc.text(`${currency()} ${Number(entry.totalSales || 0).toLocaleString()}`, margins + 100, yPos);
       yPos += 6;
     });
 
@@ -151,6 +148,7 @@ function renderReports() {
   const trend = reportData?.trend || [];
 
   if (store.userRole !== 'owner') {
+
     document.getElementById('root').innerHTML = renderLayout(`
       <div class="flex flex-col items-center justify-center min-h-[50vh]">
         <i data-lucide="shield-alert" class="w-16 h-16 text-[#FF0000] mb-4 opacity-50"></i>
@@ -165,34 +163,24 @@ function renderReports() {
 
   const stats = [
     {
-      label: 'Settled Revenue',
-      value: `${currency()} ${Number(summary.settledRevenue || 0).toLocaleString()}`,
+      label: 'Total Revenue',
+      value: `${currency()} ${Number(summary.totalSales || 0).toLocaleString()}`,
       icon: 'badge-dollar-sign',
-      growth: `${summary.settledCount || 0} settled`,
+      growth: `${summary.billCount || 0} bills`,
       positive: true,
     },
     {
-      label: 'Pending Exposure',
-      value: `${currency()} ${Number(summary.pendingTotal || 0).toLocaleString()}`,
-      icon: 'clock-3',
-      growth: `${summary.pendingCount || 0} pending`,
-      positive: summary.pendingTotal === 0,
+      label: 'Active Now',
+      value: `${summary.activeUsersCount || 0}`,
+      icon: 'user-check',
+      growth: summary.activeUsernames?.length > 0 
+        ? summary.activeUsernames.join(', ')
+        : 'No staff online',
+      positive: true,
     },
-    {
-      label: 'Failed / Cancelled',
-      value: `${currency()} ${Number(summary.failedTotal || 0).toLocaleString()}`,
-      icon: 'x-circle',
-      growth: `${summary.failedCount || 0} failed`,
-      positive: summary.failedTotal === 0,
-    },
-    {
-      label: 'Anomalies',
-      value: `${summary.anomalyCount || 0}`,
-      icon: 'alert-triangle',
-      growth: `${currency()} ${Number(summary.anomalyTotal || 0).toLocaleString()}`,
-      positive: summary.anomalyCount === 0,
-    },
+
   ];
+
 
   const html = `
     <div class="lg:h-[calc(100vh-80px)] flex-1 flex flex-col pt-4 md:pt-0 overflow-hidden bg-gray-50/10 dark:bg-black p-4 md:p-8 space-y-6 md:space-y-8 relative">
@@ -236,12 +224,12 @@ function renderReports() {
       ` : `
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
           ${stats.map((stat) => `
-            <div class="p-6 md:p-8 rounded-[2rem] md:rounded-[32px] border shadow-sm flex flex-col justify-between ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'} relative overflow-hidden">
+            <div class="p-6 md:p-8 rounded-[2rem] md:rounded-[32px] border shadow-sm flex flex-col justify-between ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'} relative overflow-hidden col-span-1 sm:col-span-2 xl:col-span-1">
               <div class="relative z-10 flex justify-between items-start mb-6">
                 <div class="p-4 rounded-2xl bg-red-100 text-[#FF0000] dark:bg-red-500/20 shadow-inner">
                   <i data-lucide="${stat.icon}" class="w-6 h-6"></i>
                 </div>
-                <div class="flex items-center px-3 py-1.5 rounded-full ${stat.positive ? 'bg-green-50 text-green-500' : 'bg-amber-50 text-amber-600'} text-[10px] md:text-xs font-black border">
+                <div class="flex items-center px-3 py-1.5 rounded-full bg-green-50 text-green-500 text-[10px] md:text-xs font-black border">
                   ${store.sanitize(stat.growth)}
                 </div>
               </div>
@@ -257,15 +245,12 @@ function renderReports() {
           <div class="w-full p-6 md:p-8 rounded-[2rem] md:rounded-[40px] border shadow-sm flex-1 flex flex-col ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'}">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
               <div>
-                <h4 class="font-black text-lg md:text-xl ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight">Settled vs Pending</h4>
+                <h4 class="font-black text-lg md:text-xl ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight">Sales Histogram</h4>
                 <p class="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">${getRangeLabel()}</p>
               </div>
               <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2 text-[10px] md:text-xs font-bold text-gray-400">
-                  <div class="w-3 h-3 rounded-md bg-[#FF0000]"></div> Settled
-                </div>
-                <div class="flex items-center gap-2 text-[10px] md:text-xs font-bold text-gray-400">
-                  <div class="w-3 h-3 rounded-md bg-amber-400"></div> Pending
+                  <div class="w-3 h-3 rounded-md bg-[#FF0000]"></div> Total Sales
                 </div>
               </div>
             </div>
@@ -276,6 +261,7 @@ function renderReports() {
         </div>
       `}
     </div>
+
   `;
 
   document.getElementById('root').innerHTML = renderLayout(html, '/reports.html');
@@ -291,8 +277,7 @@ function renderReports() {
 
 function initCharts(isDarkMode, trend) {
   const labels = trend.map((entry) => entry.label);
-  const settledRevenue = trend.map((entry) => entry.settledRevenue || 0);
-  const pendingTotal = trend.map((entry) => entry.pendingTotal || 0);
+  const totalSales = trend.map((entry) => entry.totalSales || 0);
   const gridColor = isDarkMode ? '#222' : '#f0f0f0';
 
   const barCtx = document.getElementById('barChart');
@@ -308,15 +293,9 @@ function initCharts(isDarkMode, trend) {
       labels,
       datasets: [
         {
-          label: 'Settled Revenue',
-          data: settledRevenue,
+          label: 'Total Sales',
+          data: totalSales,
           backgroundColor: '#FF0000',
-          borderRadius: 6,
-        },
-        {
-          label: 'Pending Total',
-          data: pendingTotal,
-          backgroundColor: '#FBBF24',
           borderRadius: 6,
         },
       ],
@@ -326,10 +305,7 @@ function initCharts(isDarkMode, trend) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          labels: {
-            color: isDarkMode ? '#aaa' : '#666',
-            font: { weight: 'bold' },
-          },
+          display: false,
         },
       },
       scales: {
@@ -352,6 +328,7 @@ function initCharts(isDarkMode, trend) {
     },
   });
 }
+
 
 store.subscribe(() => {
   if (!isLoading) {
