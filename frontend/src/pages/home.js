@@ -341,7 +341,6 @@ function renderHome() {
         <h2 class="text-4xl font-black mb-4 tracking-tight">
           ${mpesaStatus === 'sending' ? 'Sending Request...' : ''}
           ${mpesaStatus === 'pending' ? 'Waiting for PIN' : ''}
-          ${mpesaStatus === 'verifying' ? 'Verifying Payment...' : ''}
           ${mpesaStatus === 'success' ? 'Payment Verified!' : ''}
           ${mpesaStatus === 'error' ? 'Transaction Failed' : ''}
           ${mpesaStatus === 'duplicate' ? 'Request in Progress' : ''}
@@ -351,7 +350,11 @@ function renderHome() {
             <div class="mt-8 p-6 bg-white/10 rounded-3xl border border-white/20 backdrop-blur-md">
               <p class="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Transaction ID</p>
               <p class="text-2xl font-black font-mono tracking-tighter">
-                ${(store.bills.find(b => (b.id === activePollBillId || b._id === activePollBillId))?.mpesaReceiptNumber) || 'Syncing Receipt...'}
+                ${(() => {
+                  const targetId = activePollBillId || (pendingOrderData?.billId) || (pendingOrderData?.id);
+                  const bill = store.bills.find(b => b.id === targetId || b._id === targetId);
+                  return bill?.mpesaReceiptNumber || 'Syncing Receipt...';
+                })()}
               </p>
             </div>
             <p class="mt-8 text-lg font-bold opacity-80 max-w-xs mx-auto">
@@ -361,13 +364,12 @@ function renderHome() {
             <p class="text-lg font-bold opacity-80 max-w-xs mx-auto">
               ${mpesaStatus === 'sending' ? 'Connecting to M-Pesa Gateway...' : ''}
               ${mpesaStatus === 'pending' ? `A prompt has been sent to <span class="underline">${mpesaPhone}</span>. Please complete it on your phone.` : ''}
-              ${mpesaStatus === 'verifying' ? 'Verifying with Safaricom...' : ''}
               ${mpesaStatus === 'error' ? mpesaError : ''}
             </p>
         `}
         
         ${mpesaStatus === 'pending' ? `
-           <button onclick="window.mpesaStatus = 'verifying'; window.reRender();" class="mt-8 px-6 py-3 bg-white text-[#FF0000] rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">
+           <button onclick="window.reRender();" class="mt-8 px-6 py-3 bg-white text-[#FF0000] rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">
               I have entered my PIN
            </button>
         ` : ''}
@@ -405,7 +407,11 @@ function renderHome() {
 }
 
 function reRender() {
-  renderHome();
+  if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+    window.requestAnimationFrame(() => renderHome());
+  } else {
+    renderHome();
+  }
 }
 
 window.handleAdd = (itemId) => {
@@ -534,7 +540,8 @@ window.triggerStkPush = () => {
 
   (async () => {
     // Stage 1: Initializing
-    mpesaStatus = 'sending';
+    // Stage 1: Transitioning IMMEDIATELY to 'Waiting for PIN'
+    mpesaStatus = 'pending';
     reRender();
     
     if (!pendingOrderData) return;
@@ -565,8 +572,10 @@ window.triggerStkPush = () => {
           reRender();
 
           const pollResult = await store.pollBillStatus(billId, (status) => {
-            mpesaStatus = status;
-            reRender();
+            if (status === 'PAID' || status === 'CONFIRMED') {
+              mpesaStatus = 'success';
+              reRender();
+            }
           });
           
           if (pollResult.success) {
@@ -575,8 +584,9 @@ window.triggerStkPush = () => {
             reRender();
             setTimeout(() => {
               mpesaStatus = null;
+              activePollBillId = null;
               reRender();
-            }, 6000); // Extended from 1s to 6s for visibility
+            }, 6000); 
           } else if (pollResult.message !== 'Polling cancelled.') {
             mpesaStatus = 'error';
             mpesaError = pollResult.message;

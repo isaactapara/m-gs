@@ -115,19 +115,21 @@ const mapMpesaError = (error, fallbackMessage) => {
   return new AppError(fallbackMessage, 502, 'MPESA_GATEWAY_ERROR', errorData || null);
 };
 
-const initiateStkPushRequest = async ({ phone, bill }) => {
+const initiateStkPushRequest = async ({ phone, bill, requestId }) => {
+
   const token = await generateAuthToken();
   const timestamp = getTimestamp();
   const password = getPassword(timestamp);
   const callbackUrl = getCallbackUrl();
 
-  if (!callbackUrl) {
+  if (!callbackUrl || callbackUrl.trim().length < 5) {
     throw new AppError(
-      'MPESA_CALLBACK_URL is missing. Configure the callback URL before requesting payment.',
+      'M-Pesa Callback URL is not configured. Since automatic tunneling has been disabled for stability, please start a tunnel (e.g., cloudflared) and provide the URL in your .env as MPESA_CALLBACK_URL.',
       500,
       'MISSING_CALLBACK_URL'
     );
   }
+
 
   const normalizedPhone = normalizePhoneNumber(phone);
 
@@ -145,6 +147,15 @@ const initiateStkPushRequest = async ({ phone, bill }) => {
     TransactionDesc: 'MG Restaurant Hub Payment',
   };
 
+  logger.info('mpesa_stk_push_payload', { 
+    requestId, 
+    billId: bill.id,
+
+    amount: payload.Amount,
+    phone: payload.PhoneNumber,
+    callbackUrl: payload.CallBackURL
+  });
+
   try {
     const response = await axios.post(
       `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
@@ -157,8 +168,16 @@ const initiateStkPushRequest = async ({ phone, bill }) => {
 
     return response.data;
   } catch (error) {
+    logger.error('mpesa_stk_push_failed_gateway', {
+      requestId,
+      billId: bill.id,
+
+      error: error.message,
+      response: error.response?.data
+    });
     throw mapMpesaError(error, 'Failed to initiate M-Pesa payment');
   }
+
 };
 
 const queryStkStatusRequest = async (checkoutRequestId) => {
@@ -212,8 +231,8 @@ const extractIdFromText = (text) => {
     return null;
   }
 
-  const matches = String(text).toUpperCase().match(/[A-Z0-9]{10,}/g) || [];
-  return matches.find((candidate) => /\d/.test(candidate)) || null;
+  const matches = String(text).toUpperCase().match(/[A-Z0-9]{10,12}/g) || [];
+  return matches.find((candidate) => /^[A-Z0-9]{10,12}$/.test(candidate) && /\d/.test(candidate)) || null;
 };
 
 const parseCallbackPayload = (payload) => {
@@ -235,9 +254,7 @@ const parseCallbackPayload = (payload) => {
   const rawPhone = getMeta('PhoneNumber');
   const normalizedPhone = rawPhone == null ? null : normalizePhoneNumber(rawPhone);
   const parsedAmount = rawAmount == null || rawAmount === '' ? null : Number(rawAmount);
-  const paymentPhone = normalizedPhone == null
-    ? null
-    : (Number.isFinite(Number(normalizedPhone)) ? Number(normalizedPhone) : normalizedPhone);
+  const paymentPhone = normalizedPhone || null;
 
   return {
     checkoutRequestId: callbackData.CheckoutRequestID || null,

@@ -1,3 +1,4 @@
+// Triggered config reload: 2026-03-31T21:17:00
 const { assertRequiredConfig, env } = require('./config/env');
 const logger = require('./core/logger');
 const createApp = require('./app');
@@ -7,26 +8,14 @@ assertRequiredConfig();
 
 const app = createApp();
 
-const startLocalTunnel = async () => {
-  if (env.nodeEnv !== 'development') {
-    return;
-  }
-
-  try {
-    const localtunnel = require('localtunnel');
-    const tunnel = await localtunnel({ port: env.port });
-    process.env.MPESA_CALLBACK_URL = `${tunnel.url}/api/payments/callback`;
-
-    logger.info('localtunnel_started', {
-      url: tunnel.url,
-      callbackUrl: process.env.MPESA_CALLBACK_URL,
+const checkCallbackConfig = () => {
+  if (env.nodeEnv === 'development' && !process.env.MPESA_CALLBACK_URL) {
+    logger.warn('mpesa_callback_url_missing', {
+      message: 'MPESA_CALLBACK_URL is not set. M-Pesa payments will not be automatically confirmed. Please start a tunnel (e.g., cloudflared) and update your .env.',
     });
-
-    tunnel.on('close', () => logger.warn('localtunnel_closed'));
-  } catch (error) {
-    logger.error('localtunnel_failed', { message: error.message });
   }
 };
+
 
 const { warmupCache } = require('./domains/menu/menuController');
 
@@ -37,9 +26,10 @@ const startServer = async () => {
       nodeEnv: env.nodeEnv,
     });
 
-    // Background Warmup (Non-blocking)
+    // Background Tasks (Non-blocking)
     warmupCache();
-    startLocalTunnel();
+    checkCallbackConfig();
+
 
     setInterval(async () => {
 

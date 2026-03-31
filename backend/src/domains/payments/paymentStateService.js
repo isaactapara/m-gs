@@ -234,13 +234,14 @@ const markPaymentSuccess = async (billId, {
     data: {
       status: PAYMENT_STATUSES.PAID,
       mpesaReceiptNumber: receiptNumber || null,
-      paymentPhone: paymentPhone || null,
+      paymentPhone: paymentPhone ? String(paymentPhone) : null,
       amountPaid: Number.isFinite(amountPaid) ? amountPaid : null,
       amountDifference: 0,
       mpesaTransactionDate: mpesaTransactionDate || null,
       callbackProcessedAt: callbackTimestamp,
       callbackProcessingStartedAt: null,
       paymentLockExpiresAt: null,
+      lastStatusQueryAt: isCallbackSource ? undefined : new Date(),
       failureReason: null,
     },
     include: { items: true },
@@ -317,6 +318,11 @@ const getReconciliationCandidates = async () => {
   });
 };
 
+const updateLastStatusQueryAt = async (billId) => prisma.bill.update({
+  where: { id: billId },
+  data: { lastStatusQueryAt: new Date() },
+});
+
 module.exports = {
   TERMINAL_STATUSES: TERMINAL_PAYMENT_STATUSES,
   ACTIVE_STATUSES: ACTIVE_PAYMENT_STATUSES,
@@ -335,5 +341,6 @@ module.exports = {
   markPaymentConfirmed,
   markPaymentFailure,
   markPaymentAnomaly,
+  updateLastStatusQueryAt,
   getReconciliationCandidates,
 };

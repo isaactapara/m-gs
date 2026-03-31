@@ -24,6 +24,7 @@ const {
   markPaymentConfirmed,
   markPaymentFailure,
   markPaymentAnomaly,
+  updateLastStatusQueryAt,
   getReconciliationCandidates,
 } = require('./paymentStateService');
 const { auditPaymentAgainstBill } = require('./paymentAuditService');
@@ -108,7 +109,7 @@ const markReceiptCollisionAnomaly = async ({ bill, callback, conflictingBill, re
 const persistSuccessfulPayment = async ({ bill, callback, requestMeta }) => {
   try {
     return await markPaymentSuccess(bill.id, {
-      receiptNumber: callback.mpesaReceipt || bill.mpesaReceiptNumber || bill.checkoutRequestId,
+      receiptNumber: callback.mpesaReceipt || bill.mpesaReceiptNumber,
       paymentPhone: callback.paymentPhone,
       amountPaid: callback.actualAmountPaid,
       mpesaTransactionDate: callback.mpesaTransactionDate,
@@ -144,62 +145,102 @@ const syncBillStatus = async (bill, req = null) => {
   if (TERMINAL_STATUSES.includes(bill.status)) {
     return { status: bill.status, bill };
   }
+  
+  if (bill.lastStatusQueryAt && Date.now() - new Date(bill.lastStatusQueryAt).getTime() < 15000) {
+    return {
+      status: bill.status,
+      bill,
+      message: 'Self-throttling active. Returning last known status.'
+    };
+  }
 
-  const response = await queryStkStatusRequest(bill.checkoutRequestId);
-  const resultCode = String(response.ResultCode ?? '');
-  const resultDesc = response.ResultDesc || '';
+  // Prevent querying Safaricom status for the first 10 seconds after initiation.
+  // The user likely hasn't even entered their PIN yet, and it avoids unnecessary "Spike Arrest" errors.
+  const lastAttempt = bill.lastPaymentAttemptAt ? new Date(bill.lastPaymentAttemptAt).getTime() : 0;
+  if (Date.now() - lastAttempt < 10000) {
+    return {
+      status: bill.status,
+      bill,
+      message: 'Processing initiation. Waiting for callback...'
+    };
+  }
 
-  logger.info('mpesa_status_query_result', {
-    requestId: req?.requestId,
-    billId: bill.id,
-    checkoutRequestId: bill.checkoutRequestId,
-    resultCode,
-    resultDesc,
-  });
+  try {
+    await updateLastStatusQueryAt(bill.id);
+    const response = await queryStkStatusRequest(bill.checkoutRequestId);
+    const resultCode = String(response.ResultCode ?? '');
+    const resultDesc = response.ResultDesc || '';
 
-  if (isSuccessfulResultCode(resultCode)) {
-    const receiptNumber = extractIdFromText(resultDesc);
+    logger.info('mpesa_status_query_result', {
+      requestId: req?.requestId,
+      billId: bill.id,
+      checkoutRequestId: bill.checkoutRequestId,
+      resultCode,
+      resultDesc,
+    });
 
-    if (receiptNumber) {
-      const updatedBill = await markPaymentSuccess(bill.id, {
-        receiptNumber,
-        source: 'query',
-      });
+    if (isSuccessfulResultCode(resultCode)) {
+      const receiptNumber = extractIdFromText(resultDesc);
 
+      if (receiptNumber) {
+        const updatedBill = await markPaymentSuccess(bill.id, {
+          receiptNumber,
+          source: 'query',
+        });
+
+        return {
+          status: PAYMENT_STATUSES.PAID,
+          bill: updatedBill,
+        };
+      }
+
+      const updatedBill = await markPaymentConfirmed(bill.id);
       return {
-        status: PAYMENT_STATUSES.PAID,
+        status: PAYMENT_STATUSES.CONFIRMED,
         bill: updatedBill,
       };
     }
 
-    const updatedBill = await markPaymentConfirmed(bill.id);
+    if (MPESA_TERMINAL_QUERY_FAILURE_CODES.includes(resultCode)) {
+      const failedBill = await markPaymentFailure(
+        bill.id,
+        resultDesc || 'Payment failed',
+        {
+          source: 'query',
+          resultCode: Number(response.ResultCode),
+        }
+      );
+
+      return {
+        status: PAYMENT_STATUSES.FAILED,
+        bill: failedBill,
+      };
+    }
+
     return {
-      status: PAYMENT_STATUSES.CONFIRMED,
-      bill: updatedBill,
+      status: PAYMENT_STATUSES.PENDING,
+      bill,
+      message: 'M-Pesa sync in progress...',
     };
+  } catch (error) {
+    const isRateLimit = error?.statusCode === 429 
+      || error?.code === 'RATE_LIMIT' 
+      || String(error?.message).includes('429')
+      || String(error?.message).includes('Spike arrest');
+
+    if (isRateLimit) {
+      logger.warn('mpesa_query_limit_reached_masking', {
+        billId: bill.id,
+        message: error.message
+      });
+      return {
+        status: bill.status,
+        bill,
+        message: 'External query limit reached. Using last known state.'
+      };
+    }
+    throw error;
   }
-
-  if (MPESA_TERMINAL_QUERY_FAILURE_CODES.includes(resultCode)) {
-    const failedBill = await markPaymentFailure(
-      bill.id,
-      resultDesc || 'Payment failed',
-      {
-        source: 'query',
-        resultCode: Number(response.ResultCode),
-      }
-    );
-
-    return {
-      status: PAYMENT_STATUSES.FAILED,
-      bill: failedBill,
-    };
-  }
-
-  return {
-    status: PAYMENT_STATUSES.PENDING,
-    bill,
-    message: 'M-Pesa sync in progress...',
-  };
 };
 
 const initiatePayment = async ({ req, billId, phone }) => {
@@ -232,7 +273,9 @@ const initiatePayment = async ({ req, billId, phone }) => {
     const response = await initiateStkPushRequest({
       phone,
       bill: lockedBill,
+      requestId: req?.requestId,
     });
+
 
     const updatedBill = await linkIdentifiersSafely(billId, {
       checkoutRequestId: response.CheckoutRequestID,

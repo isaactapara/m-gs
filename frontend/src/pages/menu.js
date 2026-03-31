@@ -378,18 +378,16 @@ function renderMenu() {
           </div>
 
           <h2 class="text-4xl font-black mb-4 tracking-tight">
-            ${mpesaStatus === 'sending' ? 'Initializing...' : ''}
-            ${mpesaStatus === 'pending' ? 'Waiting for PIN' : ''}
-            ${mpesaStatus === 'processing' ? 'Processing...' : ''}
+            ${mpesaStatus === 'pending' || mpesaStatus === 'sending' ? 'Waiting for PIN' : ''}
+            ${mpesaStatus === 'processing' || mpesaStatus === 'verifying' ? 'Verifying...' : ''}
             ${mpesaStatus === 'success' ? 'Settled!' : ''}
             ${mpesaStatus === 'error' ? 'Payment Failed' : ''}
           </h2>
 
-          <p class="text-lg font-bold opacity-80 max-w-xs mx-auto">
-            ${mpesaStatus === 'sending' ? 'Connecting to Secure Gateway...' : ''}
-            ${mpesaStatus === 'pending' ? `M-Pesa push sent to <span class="underline">${mpesaPhone}</span>. Confirm the prompt on your phone.` : ''}
-            ${mpesaStatus === 'processing' ? 'Your payment is being verified by Safaricom. Please wait...' : ''}
-            ${mpesaStatus === 'success' ? 'Excellent! Payment confirmed successfully.' : ''}
+          <p class="text-lg font-bold opacity-80 max-w-sm mx-auto">
+            ${mpesaStatus === 'pending' || mpesaStatus === 'sending' ? `M-Pesa push sent to <span class="underline">${mpesaPhone}</span>. Confirm the prompt on your phone.` : ''}
+            ${mpesaStatus === 'processing' || mpesaStatus === 'verifying' ? 'Your payment is being verified by Safaricom. Please wait...' : ''}
+            ${mpesaStatus === 'success' ? `Excellent! Payment confirmed.<br><span class="text-xs opacity-60 font-mono mt-2 block">REF: ${window.lastPaymentReceipt || 'Captured'}</span>` : ''}
             ${mpesaStatus === 'error' ? mpesaError : ''}
           </p>
 
@@ -551,7 +549,7 @@ window.triggerStkPush = () => {
   
   mpesaPhone = phone;
   isMpesaPromptOpen = false;
-  mpesaStatus = 'sending';
+  mpesaStatus = 'pending'; // Transition IMMEDIATELY to waiting screen
   store.isPaymentProcessing = true;
   reRender();
 
@@ -568,26 +566,24 @@ window.triggerStkPush = () => {
           const res = await store.triggerStkPushApi(phone, pendingOrderData.total, newBill._id);
           
           if (res.ok) {
-            mpesaStatus = 'pending';
-            reRender();
-
-            const pollResult = await store.pollBillStatus(newBill._id, (status) => {
-              if (status === 'verifying') {
-                mpesaStatus = 'verifying';
+            // Background polling starts immediately
+            const pollResult = await store.pollBillStatus(newBill.id || newBill._id, (status) => {
+              if (status === 'PAID' || status === 'CONFIRMED' || status === 'verifying') {
+                mpesaStatus = status === 'verifying' ? 'verifying' : 'success';
                 reRender();
               }
             });
             
-            if (mpesaStatus !== 'pending' && mpesaStatus !== 'verifying') return;
-
             if (pollResult.success) {
+              window.lastPaymentReceipt = pollResult.bill?.mpesaReceiptNumber;
               store.clearCart();
               mpesaStatus = 'success';
               reRender();
               setTimeout(() => {
                 mpesaStatus = null;
+                window.lastPaymentReceipt = null;
                 reRender();
-              }, 800);
+              }, 4000); // Keep success message longer as requested
             } else if (pollResult.message !== 'Polling cancelled.') {
               mpesaStatus = 'error';
               mpesaError = pollResult.message;

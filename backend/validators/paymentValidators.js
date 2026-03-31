@@ -10,15 +10,16 @@ const stkPushValidators = [
     .isFloat({ min: 1 })
     .withMessage('Amount must be a positive number'),
   body('billId')
-    .isMongoId()
-    .withMessage('billId must be a valid MongoDB ObjectId'),
+    .isUUID()
+    .withMessage('billId must be a valid UUID'),
 ];
 
 const statusCheckValidators = [
   body('billId')
-    .isMongoId()
-    .withMessage('billId must be a valid MongoDB ObjectId'),
+    .isUUID()
+    .withMessage('billId must be a valid UUID'),
 ];
+
 
 module.exports = {
   stkPushValidators,

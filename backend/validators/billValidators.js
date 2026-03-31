@@ -1,48 +1,61 @@
-const { body } = require('express-validator');
-const { mongoIdParam } = require('./commonValidators');
-
-const billItemRule = body('items')
-  .isArray({ min: 1 })
-  .withMessage('At least one bill item is required');
-
-const itemDetailsRules = [
-  body('items.*.name')
-    .trim()
-    .isLength({ min: 1, max: 120 })
-    .withMessage('Each item must include a valid name'),
-  body('items.*.price')
-    .isFloat({ min: 0 })
-    .withMessage('Each item must include a valid price'),
-  body('items.*.quantity')
-    .isInt({ min: 1, max: 1000 })
-    .withMessage('Each item must include a valid quantity'),
-];
+const { body, param } = require('express-validator');
+const { PAYMENT_METHOD_MAP, PAYMENT_STATUS_MAP } = require('../src/core/constants/paymentConstants');
 
 const createBillValidators = [
-  billItemRule,
-  ...itemDetailsRules,
+  body('items')
+    .isArray({ min: 1 })
+    .withMessage('At least one item is required'),
+  body('items.*.name')
+    .trim()
+    .notEmpty()
+    .withMessage('Item name is required'),
+  body('items.*.price')
+    .isFloat({ min: 0 })
+    .withMessage('Item price must be a non-negative number'),
+  body('items.*.quantity')
+    .isInt({ min: 1 })
+    .withMessage('Item quantity must be at least 1'),
   body('paymentMethod')
-    .isIn(['M-Pesa', 'Cash'])
-    .withMessage('paymentMethod must be M-Pesa or Cash'),
+    .optional()
+    .custom((value) => {
+      if (value && !PAYMENT_METHOD_MAP[value]) {
+        throw new Error('Invalid payment method');
+      }
+      return true;
+    }),
   body('status')
     .optional()
-    .isIn(['PAID', 'PENDING', 'FAILED', 'CANCELLED', 'PARTIAL_PAYMENT_FLAGGED', 'CONFIRMED'])
-    .withMessage('Invalid bill status'),
+    .custom((value) => {
+      if (value && !PAYMENT_STATUS_MAP[value]) {
+        throw new Error('Invalid status');
+      }
+      return true;
+    }),
 ];
 
 const updateBillStatusValidators = [
-  mongoIdParam('id'),
   body('status')
-    .isIn(['PAID', 'PENDING', 'FAILED', 'CANCELLED', 'PARTIAL_PAYMENT_FLAGGED', 'CONFIRMED'])
-    .withMessage('Invalid bill status'),
+    .optional()
+    .custom((value) => {
+      if (value && !PAYMENT_STATUS_MAP[value]) {
+        throw new Error('Invalid status');
+      }
+      return true;
+    }),
   body('paymentMethod')
     .optional()
-    .isIn(['M-Pesa', 'Cash'])
-    .withMessage('paymentMethod must be M-Pesa or Cash'),
+    .custom((value) => {
+      if (value && !PAYMENT_METHOD_MAP[value]) {
+        throw new Error('Invalid payment method');
+      }
+      return true;
+    }),
 ];
 
 const billIdValidators = [
-  mongoIdParam('id'),
+  param('id')
+    .isUUID()
+    .withMessage('Invalid bill ID format'),
 ];
 
 module.exports = {

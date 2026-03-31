@@ -113,6 +113,7 @@ model Bill {
   paymentLockExpiresAt        DateTime?     @map("payment_lock_expires_at")
   paymentAttempts             Int           @default(0) @map("payment_attempts")
   auditFlags                  String[]      @default([])
+  lastStatusQueryAt           DateTime?     @map("last_status_query_at")
   createdAt                   DateTime      @default(now()) @map("created_at")
   updatedAt                   DateTime      @updatedAt @map("updated_at")
 

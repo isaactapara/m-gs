@@ -3,6 +3,12 @@ const AppError = require('../../core/appError');
 const asyncHandler = require('../../core/asyncHandler');
 const logger = require('../../core/logger');
 const { recordAuditEvent } = require('../audit/auditLogService');
+const { PAYMENT_METHOD_MAP, PAYMENT_STATUS_MAP } = require('../../core/constants/paymentConstants');
+
+
+
+// No changes needed to constants below since they are removed in the logic edit.
+
 
 const mapBillForFrontend = (bill) => {
   if (!bill) return null;
@@ -57,81 +63,100 @@ const getBills = asyncHandler(async (req, res) => {
 });
 
 const createBill = asyncHandler(async (req, res) => {
-  const items = req.body.items.map((item, index) => ({
-    menuItemId: item.menuItemId || item.id || item._id || null,
-    name: item.name,
-    price: Number(item.price),
-    quantity: Number(item.quantity),
-    sortOrder: index
-  }));
+  try {
+    logger.info('bill_creation_started', { requestId: req.requestId, itemCount: req.body.items?.length });
 
-  const computedTotal = computeBillTotal(items);
-  if (computedTotal <= 0) {
-    throw new AppError('Invalid total amount', 400, 'INVALID_TOTAL');
-  }
+    const items = req.body.items.map((item, index) => ({
+      menuItemId: item.menuItemId || item.id || item._id || null,
+      name: item.name,
+      price: Number(item.price),
+      quantity: Number(item.quantity),
+      sortOrder: index
+    }));
 
-  const billNumber = await generateBillNumber();
-
-  const bill = await prisma.$transaction(async (tx) => {
-    // 1. Create the bill
-    const newBill = await tx.bill.create({
-      data: {
-        billNumber,
-        total: computedTotal,
-        paymentMethod: req.body.paymentMethod,
-        status: req.body.status || 'PENDING',
-        cashier: req.user.username,
-        cashierId: req.user._id || req.user.id,
-        items: {
-          create: items
-        }
-      },
-      include: { items: true }
-    });
-
-    // 2. Increment soldCount for each valid menuItemId (Resilient to defunct IDs)
-    const uniqueItems = Array.from(new Set(items.filter(i => i.menuItemId).map(i => i.menuItemId)));
-    
-    for (const id of uniqueItems) {
-      const quantity = items.filter(i => i.menuItemId === id).reduce((s, i) => s + i.quantity, 0);
-      await tx.menuItem.updateMany({
-        where: { id },
-        data: { soldCount: { increment: quantity } }
-      });
+    const computedTotal = computeBillTotal(items);
+    if (computedTotal <= 0) {
+      throw new AppError('Invalid total amount', 400, 'INVALID_TOTAL');
     }
 
-    return newBill;
+    logger.info('bill_number_generating', { requestId: req.requestId });
+    const billNumber = await generateBillNumber();
+    logger.info('bill_number_generated', { requestId: req.requestId, billNumber });
 
-  });
+    const bill = await prisma.$transaction(async (tx) => {
+      logger.info('bill_transaction_started', { requestId: req.requestId });
+      
+      // 1. Create the bill
+      const newBill = await tx.bill.create({
+        data: {
+          billNumber,
+          total: computedTotal,
+          paymentMethod: PAYMENT_METHOD_MAP[req.body.paymentMethod] || 'MPESA',
+          status: PAYMENT_STATUS_MAP[req.body.status] || 'PENDING',
 
-  const parsedBill = mapBillForFrontend(bill);
+          cashier: req.user.username,
+          cashierId: req.user._id || req.user.id,
+          items: {
+            create: items
+          }
+        },
+        include: { items: true }
+      });
 
 
-  logger.info('bill_created', {
-    requestId: req.requestId,
-    billId: parsedBill._id,
-    billNumber: parsedBill.billNumber,
-    cashierId: parsedBill.cashierId,
-    total: parsedBill.total,
-    paymentMethod: parsedBill.paymentMethod,
-    status: parsedBill.status,
-  });
+      logger.info('bill_record_created', { requestId: req.requestId, billId: newBill.id });
 
-  await recordAuditEvent({
-    req,
-    action: 'bill.created',
-    entityType: 'Bill',
-    entityId: parsedBill._id,
-    metadata: {
+      // 2. Increment soldCount for each valid menuItemId (Resilient to defunct IDs)
+      const uniqueItems = Array.from(new Set(items.filter(i => i.menuItemId).map(i => i.menuItemId)));
+      
+      for (const id of uniqueItems) {
+        const quantity = items.filter(i => i.menuItemId === id).reduce((s, i) => s + i.quantity, 0);
+        await tx.menuItem.updateMany({
+          where: { id },
+          data: { soldCount: { increment: quantity } }
+        });
+      }
+
+      logger.info('bill_transaction_committing', { requestId: req.requestId });
+      return newBill;
+    }, {
+      timeout: 15000 // 15s timeout for the transaction
+    });
+
+    const parsedBill = mapBillForFrontend(bill);
+
+    logger.info('bill_creation_succeeded', {
+      requestId: req.requestId,
+      billId: parsedBill._id,
       billNumber: parsedBill.billNumber,
-      total: parsedBill.total,
-      status: parsedBill.status,
-      paymentMethod: parsedBill.paymentMethod,
-    },
-  });
+    });
 
-  res.status(201).json(parsedBill);
+    await recordAuditEvent({
+      req,
+      action: 'bill.created',
+      entityType: 'Bill',
+      entityId: parsedBill._id,
+      metadata: {
+        billNumber: parsedBill.billNumber,
+        total: parsedBill.total,
+        status: parsedBill.status,
+      },
+    }).catch(err => logger.error('bill_audit_failed', { message: err.message }));
+
+    res.status(201).json(parsedBill);
+  } catch (error) {
+    logger.error('bill_creation_failed', {
+      requestId: req.requestId,
+      message: error.message,
+      stack: error.stack,
+      payload: req.body
+    });
+    
+    if (error instanceof AppError) throw error;
+    throw new AppError('Failed to create bill: ' + error.message, 500, 'BILL_CREATION_FAILED');
+  }
 });
+
 
 const updateBillStatus = asyncHandler(async (req, res) => {
   const existing = await prisma.bill.findUnique({
@@ -145,10 +170,15 @@ const updateBillStatus = asyncHandler(async (req, res) => {
 
   assertBillAccess(existing, req.user);
 
-  const dataToUpdate = { status: req.body.status };
-  if (req.body.paymentMethod) {
-    dataToUpdate.paymentMethod = req.body.paymentMethod;
+  const dataToUpdate = {};
+  if (req.body.status) {
+    dataToUpdate.status = PAYMENT_STATUS_MAP[req.body.status] || req.body.status.toUpperCase();
   }
+  if (req.body.paymentMethod) {
+    dataToUpdate.paymentMethod = PAYMENT_METHOD_MAP[req.body.paymentMethod] || req.body.paymentMethod.toUpperCase();
+  }
+
+
 
   const bill = await prisma.bill.update({
     where: { id: req.params.id },

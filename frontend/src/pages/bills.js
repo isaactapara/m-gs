@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 
 let search = '';
 let filterStatus = 'ALL';
-let selectedBill = null;
+let selectedBillId = null;
 
 const formatDate = (date) => {
   return new Intl.DateTimeFormat('en-GB', { 
@@ -29,7 +29,9 @@ function renderBills() {
   const filteredBills = allBills.filter(bill => {
     const matchesSearch = bill.billNumber.includes(search) || 
                           bill.items.some(i => i.name.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = filterStatus === 'ALL' || bill.status === filterStatus;
+    const matchesStatus = filterStatus === 'ALL' || 
+                          bill.status === filterStatus || 
+                          (filterStatus === 'PAID' && bill.status === 'CONFIRMED');
     return matchesSearch && matchesStatus;
   });
 
@@ -165,7 +167,11 @@ function renderBills() {
       </div>
 
       <!-- Bill Detail Drawer Modal -->
-      ${selectedBill ? `
+      ${(() => {
+        const selectedBill = selectedBillId ? store.bills.find(b => b.id === selectedBillId) : null;
+        if (!selectedBill) return '';
+        
+        return `
         <div 
           class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9999] px-6 py-12 flex justify-center items-center transition-opacity"
           onclick="window.closeBillModal()"
@@ -254,7 +260,8 @@ function renderBills() {
             </div>
           </div>
         </div>
-      ` : ''}
+        `;
+      })()}
     </div>
   `;
 
@@ -273,9 +280,9 @@ function reRender() {
 
 function attachListeners() {
   const downloadBtn = document.getElementById('download-receipt-btn');
-  if (downloadBtn && selectedBill) {
+  if (downloadBtn && selectedBillId) {
     downloadBtn.addEventListener('click', () => {
-      window.downloadReceipt(selectedBill.id);
+      window.downloadReceipt(selectedBillId);
     });
   }
 
@@ -296,15 +303,12 @@ window.setFilterStatus = (status) => {
 };
 
 window.openBillModal = (billId) => {
-  const bill = store.bills.find(b => b.id === billId);
-  if (bill) {
-    selectedBill = bill;
-    reRender();
-  }
+  selectedBillId = billId;
+  reRender();
 };
 
 window.closeBillModal = () => {
-  selectedBill = null;
+  selectedBillId = null;
   reRender();
 };
 
@@ -435,7 +439,7 @@ window.downloadReceipt = async (billId) => {
 
 window.deleteBill = (billId) => {
   store.deleteBill(billId);
-  selectedBill = null;
+  selectedBillId = null;
   reRender();
 };
 

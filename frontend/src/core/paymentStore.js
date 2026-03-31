@@ -1,4 +1,4 @@
-const POLL_BACKOFF_INTERVALS = [2000, 5000, 10000, 20000, 40000];
+const POLL_BACKOFF_INTERVALS = [1000, 1000, 1000, 1000, 2000, 5000];
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 export class PaymentStore {
@@ -138,10 +138,6 @@ export class PaymentStore {
         });
         return;
       }
-
-      if (entry.attempts > 2 && typeof entry.onStatusChange === 'function') {
-        entry.onStatusChange('verifying');
-      }
     } catch (error) {
       if (error?.name === 'AbortError') {
         if (entry.cancelled || entry.settled) {
@@ -167,7 +163,7 @@ export class PaymentStore {
     return new Promise((resolve) => {
       const entry = this.createPollingEntry(billId, onStatusChange, resolve);
       this.pollingEntries.set(billId, entry);
-      this.scheduleNextPoll(entry, 0);
+      this.scheduleNextPoll(entry, 1500);
     });
   }
 

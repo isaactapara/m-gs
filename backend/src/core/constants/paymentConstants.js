@@ -5,6 +5,15 @@ const PAYMENT_METHODS = Object.freeze({
   CASH: 'Cash',
 });
 
+const PAYMENT_METHOD_MAP = Object.freeze({
+  'M-Pesa': 'MPESA',
+  'Cash': 'CASH',
+  'MPESA': 'MPESA',
+  'CASH': 'CASH',
+  'm-pesa': 'MPESA',
+  'cash': 'CASH',
+});
+
 const PAYMENT_STATUSES = Object.freeze({
   PENDING: 'PENDING',
   CONFIRMED: 'CONFIRMED',
@@ -13,6 +22,20 @@ const PAYMENT_STATUSES = Object.freeze({
   CANCELLED: 'CANCELLED',
   PARTIAL_PAYMENT_FLAGGED: 'PARTIAL_PAYMENT_FLAGGED',
 });
+
+const PAYMENT_STATUS_MAP = Object.freeze({
+  'Pending': 'PENDING',
+  'Confirmed': 'CONFIRMED',
+  'Paid': 'PAID',
+  'Failed': 'FAILED',
+  'Cancelled': 'CANCELLED',
+  'PENDING': 'PENDING',
+  'CONFIRMED': 'CONFIRMED',
+  'PAID': 'PAID',
+  'FAILED': 'FAILED',
+  'CANCELLED': 'CANCELLED',
+});
+
 
 const TERMINAL_PAYMENT_STATUSES = Object.freeze([
   PAYMENT_STATUSES.PAID,
@@ -57,7 +80,9 @@ const isActivePaymentStatus = (status) => ACTIVE_PAYMENT_STATUSES.includes(statu
 
 module.exports = {
   PAYMENT_METHODS,
+  PAYMENT_METHOD_MAP,
   PAYMENT_STATUSES,
+  PAYMENT_STATUS_MAP,
   TERMINAL_PAYMENT_STATUSES,
   ACTIVE_PAYMENT_STATUSES,
   MPESA_RESULT_CODES,
@@ -67,3 +92,4 @@ module.exports = {
   isTerminalPaymentStatus,
   isActivePaymentStatus,
 };
+
