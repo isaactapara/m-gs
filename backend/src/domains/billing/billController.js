@@ -1,0 +1,206 @@
+const prisma = require('../../config/prisma');
+const AppError = require('../../core/appError');
+const asyncHandler = require('../../core/asyncHandler');
+const logger = require('../../core/logger');
+const { recordAuditEvent } = require('../audit/auditLogService');
+
+const mapBillForFrontend = (bill) => {
+  if (!bill) return null;
+  const mapped = { ...bill, _id: bill.id };
+
+  if (mapped.total !== undefined && mapped.total !== null) mapped.total = parseFloat(mapped.total);
+  if (mapped.amountPaid !== undefined && mapped.amountPaid !== null) mapped.amountPaid = parseFloat(mapped.amountPaid);
+  if (mapped.amountDifference !== undefined && mapped.amountDifference !== null) mapped.amountDifference = parseFloat(mapped.amountDifference);
+
+  if (Array.isArray(mapped.items)) {
+    mapped.items = mapped.items.map((item) => ({
+      ...item,
+      _id: item.id,
+      price: item.price !== undefined && item.price !== null ? parseFloat(item.price) : 0,
+    }));
+  }
+
+  return mapped;
+};
+
+const assertBillAccess = (bill, user) => {
+  if (user.role === 'owner') return;
+  if (String(bill.cashierId) !== String(user._id || user.id)) {
+    throw new AppError('Access denied for this bill', 403, 'BILL_ACCESS_FORBIDDEN');
+  }
+};
+
+const computeBillTotal = (items) => {
+  const total = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+  return Number(total.toFixed(2));
+};
+
+const generateBillNumber = async () => {
+  const count = await prisma.bill.count();
+  const sequence = String(count + 1).padStart(4, '0');
+  const randomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, '0');
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const y = now.getFullYear();
+  return `M&G's-${sequence}-${randomCode}-${d}${m}${y}`;
+};
+
+const getBills = asyncHandler(async (req, res) => {
+  const query = req.user.role === 'owner' ? {} : { cashierId: req.user._id || req.user.id };
+  const bills = await prisma.bill.findMany({
+    where: query,
+    include: { items: true },
+    orderBy: { createdAt: 'desc' }
+  });
+  res.json(bills.map(mapBillForFrontend));
+});
+
+const createBill = asyncHandler(async (req, res) => {
+  const items = req.body.items.map((item, index) => ({
+    menuItemId: item.menuItemId || item.id || item._id || null,
+    name: item.name,
+    price: Number(item.price),
+    quantity: Number(item.quantity),
+    sortOrder: index
+  }));
+
+  const computedTotal = computeBillTotal(items);
+  if (computedTotal <= 0) {
+    throw new AppError('Invalid total amount', 400, 'INVALID_TOTAL');
+  }
+
+  const billNumber = await generateBillNumber();
+
+  const bill = await prisma.bill.create({
+    data: {
+      billNumber,
+      total: computedTotal,
+      paymentMethod: req.body.paymentMethod,
+      status: req.body.status || 'PENDING',
+      cashier: req.user.username,
+      cashierId: req.user._id || req.user.id,
+      items: {
+        create: items
+      }
+    },
+    include: { items: true }
+  });
+
+  const parsedBill = mapBillForFrontend(bill);
+
+  logger.info('bill_created', {
+    requestId: req.requestId,
+    billId: parsedBill._id,
+    billNumber: parsedBill.billNumber,
+    cashierId: parsedBill.cashierId,
+    total: parsedBill.total,
+    paymentMethod: parsedBill.paymentMethod,
+    status: parsedBill.status,
+  });
+
+  await recordAuditEvent({
+    req,
+    action: 'bill.created',
+    entityType: 'Bill',
+    entityId: parsedBill._id,
+    metadata: {
+      billNumber: parsedBill.billNumber,
+      total: parsedBill.total,
+      status: parsedBill.status,
+      paymentMethod: parsedBill.paymentMethod,
+    },
+  });
+
+  res.status(201).json(parsedBill);
+});
+
+const updateBillStatus = asyncHandler(async (req, res) => {
+  const existing = await prisma.bill.findUnique({
+    where: { id: req.params.id },
+    include: { items: true }
+  });
+
+  if (!existing) {
+    throw new AppError('Bill not found', 404, 'BILL_NOT_FOUND');
+  }
+
+  assertBillAccess(existing, req.user);
+
+  const dataToUpdate = { status: req.body.status };
+  if (req.body.paymentMethod) {
+    dataToUpdate.paymentMethod = req.body.paymentMethod;
+  }
+
+  const bill = await prisma.bill.update({
+    where: { id: req.params.id },
+    data: dataToUpdate,
+    include: { items: true }
+  });
+
+  const parsedBill = mapBillForFrontend(bill);
+
+  await recordAuditEvent({
+    req,
+    action: 'bill.status_updated',
+    entityType: 'Bill',
+    entityId: parsedBill._id,
+    metadata: {
+      billNumber: parsedBill.billNumber,
+      status: parsedBill.status,
+      paymentMethod: parsedBill.paymentMethod,
+    },
+  });
+
+  res.json(parsedBill);
+});
+
+const getBillById = asyncHandler(async (req, res) => {
+  const bill = await prisma.bill.findUnique({
+    where: { id: req.params.id },
+    include: { items: true }
+  });
+
+  if (!bill) {
+    throw new AppError('Bill not found', 404, 'BILL_NOT_FOUND');
+  }
+
+  assertBillAccess(bill, req.user);
+  res.json(mapBillForFrontend(bill));
+});
+
+const deleteBill = asyncHandler(async (req, res) => {
+  const bill = await prisma.bill.findUnique({
+    where: { id: req.params.id }
+  });
+
+  if (!bill) {
+    throw new AppError('Bill not found', 404, 'BILL_NOT_FOUND');
+  }
+
+  await prisma.bill.delete({
+    where: { id: req.params.id }
+  });
+
+  await recordAuditEvent({
+    req,
+    action: 'bill.deleted',
+    entityType: 'Bill',
+    entityId: bill.id ? String(bill.id).substring(0, 24) : null,
+    metadata: {
+      billNumber: bill.billNumber,
+      total: bill.total ? parseFloat(bill.total) : 0,
+    },
+  });
+
+  res.json({ message: 'Bill removed' });
+});
+
+module.exports = {
+  getBills,
+  createBill,
+  updateBillStatus,
+  getBillById,
+  deleteBill,
+  mapBillForFrontend,
+};
