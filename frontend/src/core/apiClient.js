@@ -1,7 +1,12 @@
 const resolveApiBaseUrl = () => {
-  const configured = (import.meta.env.VITE_API_BASE_URL || '').trim();
-  const fallback = '/api';
-  const baseUrl = configured || fallback;
+  let baseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  
+  if (!baseUrl) {
+    // Determine fallback based on environment
+    const isDev = import.meta.env.DEV;
+    baseUrl = isDev ? '/api' : '/api'; // Relative works best in both for consistency with proxy/nginx
+  }
+
   return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 };
 

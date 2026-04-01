@@ -22,8 +22,11 @@ const env = {
 };
 
 const assertRequiredConfig = () => {
-  if (!env.jwtSecret || env.jwtSecret.trim().length < 10) {
-    throw new Error('FATAL: JWT_SECRET is missing or too weak. Set JWT_SECRET in the backend environment.');
+  const isDev = env.nodeEnv === 'development' || env.nodeEnv === 'test';
+  const minSecretLength = isDev ? 4 : 10;
+
+  if (!env.jwtSecret || env.jwtSecret.trim().length < minSecretLength) {
+    throw new Error(`FATAL: JWT_SECRET is missing or too weak (min ${minSecretLength} chars). Set JWT_SECRET in the backend environment.`);
   }
 
   if (!env.databaseUrl || !env.databaseUrl.trim()) {

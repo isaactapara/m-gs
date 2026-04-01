@@ -17,6 +17,13 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    hmr: {
+      host: 'localhost',
+      overlay: false,
+    },
+    watch: {
+      usePolling: true,
+    },
   },
   build: {
     rollupOptions: {

@@ -46,6 +46,7 @@ export class AuthStore {
       return {
         success: false,
         message: error.response?.data?.error?.message || error.response?.data?.message || 'Login failed',
+        code: error.response?.data?.error?.code || error.response?.data?.code,
       };
     }
   }

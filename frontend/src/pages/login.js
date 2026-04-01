@@ -98,20 +98,15 @@ function attachListeners() {
   const originalPassword = document.getElementById('password').value;
 
   toggleBtn.addEventListener('click', () => {
-    const unInput = document.getElementById('username');
-    const pwInput = document.getElementById('password');
-    // Save current values before re-rendering
-    const currentUn = unInput.value;
-    const currentPw = pwInput.value;
-    
     showPassword = !showPassword;
-    renderLogin();
+    const pwInput = document.getElementById('password');
+    const toggleIcon = toggleBtn.querySelector('i');
     
-    // Restore values
-    setTimeout(() => {
-      document.getElementById('username').value = currentUn;
-      document.getElementById('password').value = currentPw;
-    }, 10);
+    pwInput.type = showPassword ? 'text' : 'password';
+    if (toggleIcon) {
+       toggleIcon.setAttribute('data-lucide', showPassword ? 'eye-off' : 'eye');
+       createIcons({ icons });
+    }
   });
 
   form.addEventListener('submit', async (e) => {
@@ -124,7 +119,14 @@ function attachListeners() {
     if (result.success) {
       window.location.href = '/';
     } else {
-      errorDiv.textContent = result.message || 'Invalid username or password. Please try again.';
+      let message = result.message || 'Invalid username or password. Please try again.';
+      
+      // Specifically handle suspended accounts (Fix #5)
+      if (result.code === 'ACCOUNT_SUSPENDED') {
+        message = 'Your account has been suspended. Please contact the owner.';
+      }
+      
+      errorDiv.textContent = message;
       errorDiv.classList.remove('hidden');
     }
   });

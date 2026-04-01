@@ -13,6 +13,8 @@ const createApp = () => {
   const defaultDevOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
     'http://localhost:4173',
     'http://127.0.0.1:4173',
   ];
@@ -46,7 +48,7 @@ const createApp = () => {
         }
       }
 
-      logger.security('cors_origin_rejected', { origin, requestId: req.requestId });
+      logger.security('cors_origin_rejected', { origin });
       callback(new AppError(`Origin ${origin} not allowed by CORS policy`, 403, 'CORS_ORIGIN_BLOCKED'));
     },
     credentials: false,

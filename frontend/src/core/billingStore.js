@@ -64,43 +64,36 @@ export class BillingStore {
     }
 
     try {
-      // 1. Fetch Menu first and as fast as possible
-      this.rootStore.apiClient.get('/menu').then(menuData => {
-        this.menu = this.normalizeMenu(menuData);
-      
-        // Cleanup cart items that no longer exist in the new menu
-        const validMenuIds = new Set(this.menu.map(item => item.id));
-        const rootCart = this.rootStore.cartStore.cart || [];
-        const validCart = rootCart.filter(item => validMenuIds.has(item.id));
-        
-        if (validCart.length !== rootCart.length) {
-          console.warn('Cleaning up defunct menu items from cart after DB reset.');
-          this.rootStore.cartStore.cart = validCart;
-          this.rootStore.notify();
-        }
-
-
-        if (notify) this.rootStore.notify();
-      }).catch(err => console.error('Menu fetch failed:', err));
-
-      // 2. Fetch others in background
-      const [billsData, usersData] = await Promise.all([
+      // Fetch all core restaurant data concurrently to ensure a complete state before notification
+      const [menuData, billsData, usersData] = await Promise.all([
+        this.rootStore.apiClient.get('/menu'),
         this.rootStore.apiClient.get('/bills'),
         this.rootStore.authStore.userRole === 'owner'
           ? this.rootStore.apiClient.get('/auth/users').catch(() => [])
           : Promise.resolve([]),
       ]);
 
+      // Process and normalize data
+      this.menu = this.normalizeMenu(menuData);
       this.bills = billsData.map((bill) => this.normalizeBill(bill));
       this.users = this.normalizeUsers(usersData);
+
+      // Cleanup cart items that no longer exist in the fresh menu
+      const validMenuIds = new Set(this.menu.map(item => item.id));
+      const rootCart = this.rootStore.cartStore?.cart || [];
+      const validCart = rootCart.filter(item => validMenuIds.has(item.id));
+      
+      if (validCart.length !== rootCart.length) {
+        console.warn('Cleaning up defunct menu items from cart after state refresh.');
+        this.rootStore.cartStore.cart = validCart;
+      }
 
       if (notify) {
         this.rootStore.notify();
       }
     } catch (error) {
-      console.error('Failed to fetch background data:', error);
+      console.error('Failed to fetch initial restaurant state:', error);
     }
-
   }
 
   async addMenuItem(itemData) {

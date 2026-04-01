@@ -3,6 +3,7 @@ const AppError = require('../../core/appError');
 const asyncHandler = require('../../core/asyncHandler');
 const logger = require('../../core/logger');
 const { recordAuditEvent } = require('../audit/auditLogService');
+const { toMongoJSON } = require('../../mappers/prismaMapper');
 const { PAYMENT_METHOD_MAP, PAYMENT_STATUS_MAP } = require('../../core/constants/paymentConstants');
 
 
@@ -10,24 +11,6 @@ const { PAYMENT_METHOD_MAP, PAYMENT_STATUS_MAP } = require('../../core/constants
 // No changes needed to constants below since they are removed in the logic edit.
 
 
-const mapBillForFrontend = (bill) => {
-  if (!bill) return null;
-  const mapped = { ...bill, _id: bill.id };
-
-  if (mapped.total !== undefined && mapped.total !== null) mapped.total = parseFloat(mapped.total);
-  if (mapped.amountPaid !== undefined && mapped.amountPaid !== null) mapped.amountPaid = parseFloat(mapped.amountPaid);
-  if (mapped.amountDifference !== undefined && mapped.amountDifference !== null) mapped.amountDifference = parseFloat(mapped.amountDifference);
-
-  if (Array.isArray(mapped.items)) {
-    mapped.items = mapped.items.map((item) => ({
-      ...item,
-      _id: item.id,
-      price: item.price !== undefined && item.price !== null ? parseFloat(item.price) : 0,
-    }));
-  }
-
-  return mapped;
-};
 
 const assertBillAccess = (bill, user) => {
   if (user.role === 'owner') return;
@@ -59,7 +42,7 @@ const getBills = asyncHandler(async (req, res) => {
     include: { items: true },
     orderBy: { createdAt: 'desc' }
   });
-  res.json(bills.map(mapBillForFrontend));
+  res.json(toMongoJSON(bills));
 });
 
 const createBill = asyncHandler(async (req, res) => {
@@ -122,28 +105,26 @@ const createBill = asyncHandler(async (req, res) => {
     }, {
       timeout: 15000 // 15s timeout for the transaction
     });
-
-    const parsedBill = mapBillForFrontend(bill);
-
+    
     logger.info('bill_creation_succeeded', {
       requestId: req.requestId,
-      billId: parsedBill._id,
-      billNumber: parsedBill.billNumber,
+      billId: bill.id,
+      billNumber: bill.billNumber,
     });
 
     await recordAuditEvent({
       req,
       action: 'bill.created',
       entityType: 'Bill',
-      entityId: parsedBill._id,
+      entityId: bill.id,
       metadata: {
-        billNumber: parsedBill.billNumber,
-        total: parsedBill.total,
-        status: parsedBill.status,
+        billNumber: bill.billNumber,
+        total: Number(bill.total),
+        status: bill.status,
       },
     }).catch(err => logger.error('bill_audit_failed', { message: err.message }));
 
-    res.status(201).json(parsedBill);
+    res.status(201).json(toMongoJSON(bill));
   } catch (error) {
     logger.error('bill_creation_failed', {
       requestId: req.requestId,
@@ -192,21 +173,19 @@ const updateBillStatus = asyncHandler(async (req, res) => {
     include: { items: true }
   });
 
-  const parsedBill = mapBillForFrontend(bill);
-
   await recordAuditEvent({
     req,
     action: 'bill.status_updated',
     entityType: 'Bill',
-    entityId: parsedBill._id,
+    entityId: bill.id,
     metadata: {
-      billNumber: parsedBill.billNumber,
-      status: parsedBill.status,
-      paymentMethod: parsedBill.paymentMethod,
+      billNumber: bill.billNumber,
+      status: bill.status,
+      paymentMethod: bill.paymentMethod,
     },
   });
 
-  res.json(parsedBill);
+  res.json(toMongoJSON(bill));
 });
 
 const getBillById = asyncHandler(async (req, res) => {
@@ -220,7 +199,7 @@ const getBillById = asyncHandler(async (req, res) => {
   }
 
   assertBillAccess(bill, req.user);
-  res.json(mapBillForFrontend(bill));
+  res.json(toMongoJSON(bill));
 });
 
 const deleteBill = asyncHandler(async (req, res) => {
@@ -256,5 +235,5 @@ module.exports = {
   updateBillStatus,
   getBillById,
   deleteBill,
-  mapBillForFrontend,
+  toMongoJSON,
 };

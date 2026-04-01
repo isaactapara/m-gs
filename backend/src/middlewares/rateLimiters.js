@@ -26,7 +26,7 @@ const globalLimiter = buildLimiter({
 
 const authLimiter = buildLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 8,
+  max: 50,
   skipSuccessfulRequests: false,
   message: 'Too many login attempts. Please wait before trying again.',
 });

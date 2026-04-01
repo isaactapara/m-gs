@@ -2,15 +2,10 @@ const prisma = require('../../config/prisma');
 const AppError = require('../../core/appError');
 const asyncHandler = require('../../core/asyncHandler');
 const NodeCache = require('node-cache');
+const { toMongoJSON } = require('../../mappers/prismaMapper');
 
 const menuCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
-// Explicit mapping function to ensure frontend compatibility (Mongoose _id & Decimal to Number)
-const mapMenuItem = (item) => ({
-  ...item,
-  _id: item.id,
-  price: item.price ? parseFloat(item.price) : 0,
-});
 
 
 const getMenu = asyncHandler(async (req, res) => {
@@ -25,7 +20,7 @@ const getMenu = asyncHandler(async (req, res) => {
       { name: 'asc' }
     ]
   });
-  const mappedMenu = menu.map(mapMenuItem);
+  const mappedMenu = toMongoJSON(menu);
   menuCache.set('all_menu', mappedMenu);
   res.json(mappedMenu);
 });
@@ -58,7 +53,7 @@ const addMenuItem = asyncHandler(async (req, res) => {
   });
 
   menuCache.flushAll();
-  res.status(201).json(mapMenuItem(item));
+  res.status(201).json(toMongoJSON(item));
 });
 
 
@@ -87,7 +82,7 @@ const updateMenuItem = asyncHandler(async (req, res) => {
     });
     
     menuCache.flushAll();
-    res.json(mapMenuItem(item));
+    res.json(toMongoJSON(item));
 
   } catch (error) {
     console.error('Prisma Menu Update Error:', {
@@ -129,7 +124,7 @@ const warmupCache = async () => {
         { name: 'asc' }
       ]
     });
-    const mappedMenu = menu.map(mapMenuItem);
+    const mappedMenu = toMongoJSON(menu);
     menuCache.set('all_menu', mappedMenu);
     console.log('Menu cache warmed up with', mappedMenu.length, 'items');
   } catch (err) {

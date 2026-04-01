@@ -3,14 +3,19 @@ const logger = require('../../core/logger');
 
 const buildActor = (req, actorOverride = null) => {
   if (actorOverride) {
-    return actorOverride;
+    return {
+      actorId: actorOverride.actorId || null,
+      actorUsername: actorOverride.actorUsername || 'system',
+      actorRole: actorOverride.actorRole || 'system',
+    };
   }
 
-  if (req?.user) {
+  const user = req?.user;
+  if (user) {
     return {
-      actorId: req.user._id || req.user.id || null,
-      actorUsername: req.user.username,
-      actorRole: req.user.role,
+      actorId: user._id || user.id || null,
+      actorUsername: user.username || 'unknown',
+      actorRole: user.role || 'unknown',
     };
   }
 

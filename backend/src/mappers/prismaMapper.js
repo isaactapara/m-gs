@@ -17,12 +17,26 @@ const toMongoJSON = (prismaPayload) => {
     mapped._id = mapped.id;
   }
 
-  // Handle nested arrays (e.g. Bill.items)
+  // Handle nested arrays, objects, and types like Decimal
   for (const key of Object.keys(mapped)) {
-    if (Array.isArray(mapped[key])) {
-      mapped[key] = mapped[key].map(toMongoJSON);
-    } else if (mapped[key] !== null && typeof mapped[key] === 'object' && !(mapped[key] instanceof Date)) {
-      mapped[key] = toMongoJSON(mapped[key]);
+    const value = mapped[key];
+    
+    if (Array.isArray(value)) {
+      mapped[key] = value.map(toMongoJSON);
+    } else if (value !== null && typeof value === 'object') {
+      if (value instanceof Date) {
+        continue;
+      }
+      
+      // Handle Prisma Decimal more robustly
+      const isDecimal = value.constructor && value.constructor.name === 'Decimal';
+      const hasDecimalMethods = typeof value.toFixed === 'function' && typeof value.toNumber === 'function';
+      
+      if (isDecimal || hasDecimalMethods) {
+        mapped[key] = Number(value.toString());
+      } else {
+        mapped[key] = toMongoJSON(value);
+      }
     }
   }
 

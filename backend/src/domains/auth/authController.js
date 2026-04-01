@@ -15,7 +15,14 @@ const safeEntityId = (id) => id ? String(id).substring(0, 24) : null;
 
 const loginUser = asyncHandler(async (req, res) => {
   const normalizedUsername = String(req.body.username).toLowerCase().trim();
-  const user = await prisma.user.findUnique({ where: { username: normalizedUsername } });
+  const user = await prisma.user.findFirst({ 
+    where: { 
+      username: {
+        equals: normalizedUsername,
+        mode: 'insensitive'
+      }
+    } 
+  });
   
   // Check if user exists and password is valid
   const isValid = user ? await bcrypt.compare(req.body.password, user.password) : false;
