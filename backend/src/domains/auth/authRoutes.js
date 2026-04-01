@@ -6,6 +6,7 @@ const {
   deleteUser,
   updatePassword,
   toggleUserStatus,
+  updateUserRole,
 } = require('./authController');
 const { protect, ownerOnly } = require('../../middlewares/auth');
 const validateRequest = require('../../middlewares/validateRequest');
@@ -23,6 +24,7 @@ router.post('/register', protect, ownerOnly, registerValidators, validateRequest
 router.get('/users', protect, ownerOnly, getUsers);
 router.patch('/change-password', protect, updatePassword);
 router.patch('/users/:id/toggle-status', protect, ownerOnly, toggleUserStatus);
+router.patch('/users/:id/role', protect, ownerOnly, updateUserRole);
 router.delete('/users/:id', protect, ownerOnly, deleteUserValidators, validateRequest, deleteUser);
 router.get('/health', (req, res) => res.json({ status: 'ok' }));
 

@@ -186,6 +186,50 @@ const toggleUserStatus = asyncHandler(async (req, res) => {
   });
 });
 
+const updateUserRole = asyncHandler(async (req, res) => {
+  const { role } = req.body;
+  const targetUserId = req.params.id;
+
+  if (!['owner', 'cashier'].includes(role)) {
+    throw new AppError('Invalid role specified', 400, 'INVALID_ROLE');
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: targetUserId } });
+
+  if (!user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  // Prevent self-demotion
+  if (user.id === req.user.id && role !== 'owner') {
+    throw new AppError('Owners cannot demote themselves. Promote another owner first.', 400, 'SELF_DEMOTION_FORBIDDEN');
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: targetUserId },
+    data: { role }
+  });
+
+  clearUserCache(targetUserId);
+
+  await recordAuditEvent({
+    req,
+    action: role === 'owner' ? 'staff.elevated' : 'staff.demoted',
+    entityType: 'User',
+    entityId: targetUserId,
+    metadata: { 
+      username: user.username,
+      newRole: role,
+      oldRole: user.role
+    },
+  });
+
+  res.json({
+    message: `User ${user.username} has been ${role === 'owner' ? 'elevated to Owner' : 'demoted to Cashier'} successfully`,
+    role: updatedUser.role
+  });
+});
+
 
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { id: req.params.id } });
@@ -223,5 +267,6 @@ module.exports = {
   deleteUser,
   updatePassword,
   toggleUserStatus,
+  updateUserRole,
 };
 
