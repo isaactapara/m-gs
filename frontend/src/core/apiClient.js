@@ -1,22 +1,27 @@
 const resolveApiBaseUrl = () => {
   let baseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
 
+  // 1. Fallback for unconfigured environments (local dev or proxy-managed prod)
   if (!baseUrl) {
-    // Determine fallback based on environment
-    const isDev = import.meta.env.DEV;
-    baseUrl = isDev ? '/api' : '/api'; // Relative works best in both for consistency with proxy/nginx
+    return '/api';
   }
 
-  // Ensure trailing slash is removed
-  if (baseUrl.endsWith('/')) {
-    baseUrl = baseUrl.slice(0, -1);
-  }
+  // 2. Normalize: Remove all trailing slashes
+  baseUrl = baseUrl.replace(/\/+$/, '');
 
-  // FAIL-SAFE: If it's a production URL (starts with http) and MISSING the /api suffix, append it.
-  // This ensures that even if VITE_API_BASE_URL is set to "https://api.mandgs.online", 
-  // it correctly becomes "https://api.mandgs.online/api".
-  if (baseUrl.startsWith('http') && !baseUrl.endsWith('/api')) {
-    baseUrl = `${baseUrl}/api`;
+  // 3. Validation for Production (Absolute) URLs
+  if (baseUrl.startsWith('http')) {
+    try {
+      const url = new URL(baseUrl);
+      // If the path doesn't already end with /api, append it.
+      // This protects against https://api.mgs.com becoming https://api.mgs.com/api
+      // while preventing https://api.mgs.com/api from becoming https://api.mgs.com/api/api
+      if (!url.pathname.endsWith('/api')) {
+        baseUrl = `${baseUrl}/api`;
+      }
+    } catch (err) {
+      console.error('Invalid VITE_API_BASE_URL:', baseUrl);
+    }
   }
 
   return baseUrl;
