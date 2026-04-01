@@ -1,29 +1,59 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const { env } = require('./config/env');
 const requestContext = require('./middlewares/requestContext');
 const { globalLimiter } = require('./middlewares/rateLimiters');
 const { notFoundHandler, errorHandler } = require('./middlewares/errorHandler');
+const AppError = require('./core/appError');
 
 const createApp = () => {
   const app = express();
+  const defaultDevOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:4173',
+    'http://127.0.0.1:4173',
+  ];
+  const allowedOrigins = new Set(
+    env.corsAllowedOrigins.length ? env.corsAllowedOrigins : defaultDevOrigins
+  );
 
   app.set('trust proxy', 1);
 
   app.use(helmet());
-  app.use(cors());
-  app.use(express.json({ limit: '1mb' }));
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow non-browser requests without Origin header (curl, server-to-server).
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new AppError('Origin not allowed by CORS policy', 403, 'CORS_ORIGIN_BLOCKED'));
+    },
+    credentials: false,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
+    maxAge: 600,
+  }));
+  app.use(express.json({
+    limit: '1mb',
+    verify: (req, res, buf) => {
+      req.rawBody = Buffer.from(buf);
+    },
+  }));
   app.use(requestContext);
-  app.use((req, res, next) => (
-    req.path.startsWith('/api/payments/callback')
-      ? next()
-      : globalLimiter(req, res, next)
-  ));
+  app.use(globalLimiter);
 
   app.use('/api/auth', require('./domains/auth/authRoutes'));
   app.use('/api/menu', require('./domains/menu/menuRoutes'));
   app.use('/api/bills', require('./domains/billing/billRoutes'));
-  app.use('/api/payments', require('./domains/payments/paymentRoutes'));
   app.use('/api/settings', require('./domains/sharedState/settingsRoutes'));
   app.use('/api/tables', require('./domains/sharedState/tableRoutes'));
   app.use('/api/reports', require('./domains/reports/reportRoutes'));

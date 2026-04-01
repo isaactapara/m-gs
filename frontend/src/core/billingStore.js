@@ -104,32 +104,75 @@ export class BillingStore {
   }
 
   async addMenuItem(itemData) {
-    const data = await this.rootStore.apiClient.post('/menu', itemData);
-
-    this.menu.push({ ...data, id: data._id || data.id });
+    const tempId = `temp-${Date.now()}`;
+    const tempItem = { ...itemData, id: tempId, pending: true, _id: tempId };
+    this.menu.unshift(tempItem);
     this.rootStore.notify();
-    return data;
+
+    try {
+      const data = await this.rootStore.apiClient.post('/menu', itemData);
+      const index = this.menu.findIndex(i => i.id === tempId);
+      if (index > -1) {
+        this.menu[index] = { ...data, id: data._id || data.id };
+      }
+      this.rootStore.notify();
+      return data;
+    } catch (error) {
+      this.menu = this.menu.filter(i => i.id !== tempId);
+      this.rootStore.notify();
+      throw error;
+    }
   }
 
   async updateMenuItem(id, itemData) {
-    const data = await this.rootStore.apiClient.patch(`/menu/${id}`, itemData);
-
     const index = this.menu.findIndex((item) => item._id === id || item.id === id);
+    let backupItem = null;
+
     if (index > -1) {
-      this.menu[index] = { ...data, id: data._id || data.id };
+      backupItem = { ...this.menu[index] };
+      this.menu[index] = { ...this.menu[index], ...itemData, pending: true };
+      this.rootStore.notify();
     }
 
-    this.rootStore.notify();
-    return data;
+    try {
+      const data = await this.rootStore.apiClient.patch(`/menu/${id}`, itemData);
+      if (index > -1) {
+        this.menu[index] = { ...data, id: data._id || data.id };
+      }
+      this.rootStore.notify();
+      return data;
+    } catch (error) {
+      if (backupItem && index > -1) {
+        this.menu[index] = backupItem;
+        this.rootStore.notify();
+      }
+      throw error;
+    }
   }
 
   async deleteMenuItem(id) {
-    await this.rootStore.apiClient.delete(`/menu/${id}`);
-    this.menu = this.menu.filter((item) => item._id !== id && item.id !== id);
-    this.rootStore.notify();
+    const index = this.menu.findIndex((item) => item._id === id || item.id === id);
+    let backupItem = null;
+
+    if (index > -1) {
+      backupItem = this.menu[index];
+      this.menu = this.menu.filter((item) => item._id !== id && item.id !== id);
+      this.rootStore.notify();
+    }
+
+    try {
+      await this.rootStore.apiClient.delete(`/menu/${id}`);
+    } catch (error) {
+      if (backupItem) {
+        this.menu.splice(index, 0, backupItem);
+        this.rootStore.notify();
+      }
+      throw error;
+    }
   }
 
   async createBill(billData) {
+    const tempId = `temp-bill-${Date.now()}`;
     const payload = {
       ...billData,
       items: billData.items.map((item) => ({
@@ -140,8 +183,25 @@ export class BillingStore {
       })),
     };
 
-    const data = await this.rootStore.apiClient.post('/bills', payload);
-    return this.upsertBill(data);
+    const optimisticBill = {
+      ...payload,
+      id: tempId,
+      _id: tempId,
+      createdAt: new Date(),
+      billNumber: '...',
+      pending: true
+    };
+    this.upsertBill(optimisticBill);
+
+    try {
+      const data = await this.rootStore.apiClient.post('/bills', payload);
+      this.bills = this.bills.filter(b => b.id !== tempId);
+      return this.upsertBill(data);
+    } catch (error) {
+      this.bills = this.bills.filter(b => b.id !== tempId);
+      this.rootStore.notify();
+      throw error;
+    }
   }
 
   async deleteBill(id) {
@@ -151,14 +211,31 @@ export class BillingStore {
   }
 
   async updateBillStatus(id, status, paymentMethod = null) {
-    const body = { status };
+    const index = this.bills.findIndex((entry) => entry._id === id || entry.id === id);
+    let backupBill = null;
 
-    if (paymentMethod) {
-      body.paymentMethod = paymentMethod;
+    if (index > -1) {
+      backupBill = { ...this.bills[index] };
+      const optimisticUpdate = { ...backupBill, status };
+      if (paymentMethod) optimisticUpdate.paymentMethod = paymentMethod;
+      this.bills[index] = optimisticUpdate;
+      this.rootStore.notify();
     }
 
-    const data = await this.rootStore.apiClient.patch(`/bills/${id}`, body);
-    return this.upsertBill(data);
+    try {
+      const body = { status };
+      if (paymentMethod) {
+        body.paymentMethod = paymentMethod;
+      }
+      const data = await this.rootStore.apiClient.patch(`/bills/${id}`, body);
+      return this.upsertBill(data);
+    } catch (error) {
+      if (backupBill && index > -1) {
+        this.bills[index] = backupBill;
+        this.rootStore.notify();
+      }
+      throw error;
+    }
   }
 
   async addUser(username, password) {
@@ -201,6 +278,12 @@ export class BillingStore {
   async fetchReportSummary(timeframe = 'week') {
     const data = await this.rootStore.apiClient.get(`/reports/summary?timeframe=${encodeURIComponent(timeframe)}`);
     this.reportSummary = data;
+    this.rootStore.notify();
+    return data;
+  }
+
+  async fetchAllSummaries() {
+    const data = await this.rootStore.apiClient.get('/reports/summary/all');
     this.rootStore.notify();
     return data;
   }

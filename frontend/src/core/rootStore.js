@@ -65,6 +65,33 @@ export class RootStore {
     this.subscribers.forEach((callback) => callback(this));
   }
 
+  /**
+   * Escapes a value for safe injection into HTML **text nodes only**.
+   *
+   * @param {*} value - Raw value to escape (menu item names, usernames, etc.)
+   * @returns {string} HTML-entity-encoded string safe for use as element text content.
+   *
+   * @security
+   * ╔══════════════════════════════════════════════════════════════════════╗
+   * ║  WARNING — PARTIAL XSS PROTECTION. READ BEFORE USE.                ║
+   * ╠══════════════════════════════════════════════════════════════════════╣
+   * ║  This method uses the browser's native textContent/innerHTML trick  ║
+   * ║  to HTML-encode characters like <, >, &, and ".                    ║
+   * ║                                                                      ║
+   * ║  ✅ SAFE for:  injecting into element inner content, e.g.:          ║
+   * ║     `<h3>${store.sanitize(item.name)}</h3>`                         ║
+   * ║                                                                      ║
+   * ║  ❌ NOT SAFE for: HTML attribute contexts, e.g.:                    ║
+   * ║     `<a href="${store.sanitize(url)}">` — javascript: URIs survive  ║
+   * ║     `<img src="${store.sanitize(src)}">` — data: URIs survive       ║
+   * ║     `<div onclick="${store.sanitize(handler)}">` — event handlers   ║
+   * ║                                                                      ║
+   * ║  If you need to place user-supplied data into an HTML attribute,    ║
+   * ║  install DOMPurify and use DOMPurify.sanitize() with a strict       ║
+   * ║  ALLOWED_ATTR config, or use DOM APIs (setAttribute) instead of     ║
+   * ║  string interpolation entirely.                                      ║
+   * ╚══════════════════════════════════════════════════════════════════════╝
+   */
   sanitize(value) {
     if (!value) {
       return '';
@@ -161,13 +188,10 @@ export class RootStore {
   async addUser(username, pin) { return this.billingStore.addUser(username, pin); }
   async deleteUser(id) { return this.billingStore.deleteUser(id); }
   async fetchReportSummary(timeframe) { return this.billingStore.fetchReportSummary(timeframe); }
+  async fetchAllSummaries() { return this.billingStore.fetchAllSummaries(); }
 
-  async triggerStkPushApi(phoneNumber, amount, billId) {
-    return this.paymentStore.triggerStkPushApi(phoneNumber, amount, billId);
-  }
-  pollBillStatus(billId, callback) { return this.paymentStore.pollBillStatus(billId, callback); }
-  stopPolling(billId, options) { return this.paymentStore.stopPolling(billId, options); }
-  stopAllPolling(options) { return this.paymentStore.stopAllPolling(options); }
+
+
 
   addTable(table) { return this.tablesStore.addTable(table); }
   removeTable(id) { return this.tablesStore.removeTable(id); }

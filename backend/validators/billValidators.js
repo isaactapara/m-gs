@@ -3,8 +3,8 @@ const { PAYMENT_METHOD_MAP, PAYMENT_STATUS_MAP } = require('../src/core/constant
 
 const createBillValidators = [
   body('items')
-    .isArray({ min: 1 })
-    .withMessage('At least one item is required'),
+    .isArray({ min: 1, max: 50 })
+    .withMessage('At least one item is required and max 50'),
   body('items.*.name')
     .trim()
     .notEmpty()

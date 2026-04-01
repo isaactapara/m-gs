@@ -6,12 +6,7 @@ import { createIcons, icons } from 'lucide';
 let paymentMethod = 'M-Pesa';
 let isSuccess = false;
 let payingBillId = null;
-let isMpesaPromptOpen = false;
-let mpesaStatus = null; // null, 'sending', 'pending', 'success', 'error'
-let mpesaError = '';
-let mpesaPhone = '';
-let pendingOrderData = null; // Store order while waiting for M-Pesa
-let activePollBillId = null; // Track current bill for status display
+
 
 function renderHome() {
   const isDarkMode = store.isDarkMode;
@@ -134,11 +129,9 @@ function renderHome() {
                 </button>
                 <button onclick="window.submitOrder('PAID')" ${cart.length === 0 || store.isPaymentProcessing ? 'disabled' : ''} class="w-full sm:w-auto py-5 sm:py-4 px-8 rounded-2xl font-black text-white flex items-center justify-center gap-2 transition-all ${
                   isSuccess ? "bg-green-500 shadow-green-500/40" : 
-                  mpesaStatus === 'error' ? "bg-amber-500 shadow-amber-500/40" : 
                   "bg-[#FF0000] shadow-red-500/40 hover:bg-red-600 hover:-translate-y-1"
                 } shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none">
                   ${isSuccess ? `<i data-lucide="check-circle-2" class="w-5 h-5"></i> PAID` : 
-                    mpesaStatus === 'error' ? `<i data-lucide="alert-circle" class="w-5 h-5"></i> FAILED` : 
                     `<i data-lucide="banknote" class="w-5 h-5"></i> PAY NOW`}
                 </button>
               </div>
@@ -265,139 +258,7 @@ function renderHome() {
       </div>
     ` : ''}
 
-    <!-- M-Pesa Phone Prompt Modal -->
-    ${isMpesaPromptOpen ? `
-      <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center animate-in fade-in">
-        <div class="p-10 rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col gap-6 scale-in-center ${isDarkMode ? "bg-gray-950 border border-gray-900" : "bg-white"}">
-          <div class="text-center space-y-4">
-            <div class="w-20 h-20 rounded-3xl bg-green-100 text-green-600 dark:bg-green-500/10 flex items-center justify-center mx-auto shadow-inner">
-              <i data-lucide="smartphone" class="w-10 h-10"></i>
-            </div>
-            <h3 class="text-3xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}">M-Pesa Push</h3>
-            <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Enter customer's M-Pesa number</p>
-          </div>
-          
-          <div class="space-y-4">
-            <div class="relative group">
-              <i data-lucide="phone" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#FF0000] transition-colors"></i>
-              <input 
-                type="tel" 
-                id="mpesa-phone-input"
-                placeholder="07XXXXXXXX"
-                value="${mpesaPhone}"
-                oninput="window.mpesaPhone = this.value"
-                class="w-full pl-14 pr-5 py-5 rounded-2xl text-lg font-black tracking-widest transition-all focus:ring-4 focus:ring-red-500/10 focus:outline-none ${isDarkMode ? "bg-gray-800 text-white border-transparent" : "bg-gray-50 text-gray-900 border-transparent shadow-inner"}"
-              />
-            </div>
-            
-            <button 
-              onclick="window.triggerStkPush()" 
-              id="send-stk-btn"
-              ${mpesaStatus ? 'disabled' : ''}
-              class="w-full py-5 rounded-2xl bg-[#FF0000] text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-red-500/30 hover:bg-red-600 transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ${mpesaStatus ? 'Processing...' : 'Send STK Push'}
-            </button>
-            <button onclick="window.closeMpesaPrompt()" class="w-full py-4 rounded-2xl font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    ` : ''}
 
-    <!-- M-Pesa Status Overlay -->
-    ${mpesaStatus ? `
-      <div class="fixed inset-0 bg-[#FF0000]/95 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center text-white px-8 text-center animate-in fade-in" 
-            onclick="window.cancelMpesa()">
-        
-        <div class="relative mb-12">
-          ${mpesaStatus === 'sending' || mpesaStatus === 'pending' ? `
-            <div class="w-32 h-32 rounded-full border-8 border-white/20 border-t-white animate-spin"></div>
-            <div class="absolute inset-0 flex items-center justify-center">
-              <i data-lucide="smartphone" class="w-12 h-12 animate-bounce"></i>
-            </div>
-          ` : ''}
-
-          ${mpesaStatus === 'success' ? `
-            <div class="w-32 h-32 rounded-full bg-white flex items-center justify-center text-[#00FF00] scale-in-center">
-              <i data-lucide="check" class="w-16 h-16 stroke-[4]"></i>
-            </div>
-          ` : ''}
-
-          ${mpesaStatus === 'error' ? `
-            <div class="w-32 h-32 rounded-full bg-white flex items-center justify-center text-[#FF0000] scale-in-center">
-              <i data-lucide="x" class="w-16 h-16 stroke-[4]"></i>
-            </div>
-          ` : ''}
-
-          ${mpesaStatus === 'duplicate' ? `
-            <div class="w-32 h-32 rounded-full bg-white flex items-center justify-center text-amber-500 scale-in-center">
-              <i data-lucide="alert-circle" class="w-16 h-16 stroke-[4]"></i>
-            </div>
-          ` : ''}
-        </div>
-
-        <h2 class="text-4xl font-black mb-4 tracking-tight">
-          ${mpesaStatus === 'sending' ? 'Sending Request...' : ''}
-          ${mpesaStatus === 'pending' ? 'Waiting for PIN' : ''}
-          ${mpesaStatus === 'success' ? 'Payment Verified!' : ''}
-          ${mpesaStatus === 'error' ? 'Transaction Failed' : ''}
-          ${mpesaStatus === 'duplicate' ? 'Request in Progress' : ''}
-        </h2>
-
-        ${mpesaStatus === 'success' ? `
-            <div class="mt-8 p-6 bg-white/10 rounded-3xl border border-white/20 backdrop-blur-md">
-              <p class="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Transaction ID</p>
-              <p class="text-2xl font-black font-mono tracking-tighter">
-                ${(() => {
-                  const targetId = activePollBillId || (pendingOrderData?.billId) || (pendingOrderData?.id);
-                  const bill = store.bills.find(b => b.id === targetId || b._id === targetId);
-                  return bill?.mpesaReceiptNumber || 'Syncing Receipt...';
-                })()}
-              </p>
-            </div>
-            <p class="mt-8 text-lg font-bold opacity-80 max-w-xs mx-auto">
-              Thank you! The bill has been marked as PAID.
-            </p>
-        ` : `
-            <p class="text-lg font-bold opacity-80 max-w-xs mx-auto">
-              ${mpesaStatus === 'sending' ? 'Connecting to M-Pesa Gateway...' : ''}
-              ${mpesaStatus === 'pending' ? `A prompt has been sent to <span class="underline">${mpesaPhone}</span>. Please complete it on your phone.` : ''}
-              ${mpesaStatus === 'error' ? mpesaError : ''}
-            </p>
-        `}
-        
-        ${mpesaStatus === 'pending' ? `
-           <button onclick="window.reRender();" class="mt-8 px-6 py-3 bg-white text-[#FF0000] rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">
-              I have entered my PIN
-           </button>
-        ` : ''}
-
-        ${mpesaStatus === 'pending' || mpesaStatus === 'processing' ? `
-          <p class="mt-8 text-[10px] font-black uppercase tracking-widest opacity-50">Click anywhere to cancel</p>
-        ` : ''}
-
-        ${(mpesaStatus === 'error' || mpesaStatus === 'duplicate') ? `
-          <div class="mt-12 flex flex-col gap-3 w-full px-8">
-            <button onclick="window.handleMpesaSync()" class="w-full py-4 bg-white text-[#FF0000] rounded-2xl font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-transform">
-              Check Payment Again
-            </button>
-            <button onclick="window.closeMpesaError()" class="w-full py-4 bg-transparent border-2 border-white/30 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-white/10 transition-colors">
-              Close & Try Again
-            </button>
-          </div>
-        ` : ''}
-
-        ${mpesaStatus === 'sending' || mpesaStatus === 'pending' ? `
-          <div class="mt-12 flex gap-2">
-             <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-             <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-             <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
-          </div>
-        ` : ''}
-      </div>
-    ` : ''}
   `;
 
   document.getElementById('root').innerHTML = renderLayout(html, '/');
@@ -439,12 +300,7 @@ window.submitOrder = async (targetStatus = 'PAID') => {
     paymentMethod,
   };
 
-  if (targetStatus === 'PAID' && paymentMethod === 'M-Pesa') {
-    pendingOrderData = billData;
-    isMpesaPromptOpen = true;
-    reRender();
-    return;
-  }
+
 
   try {
     await store.createBill(billData);
@@ -463,40 +319,7 @@ window.submitOrder = async (targetStatus = 'PAID') => {
   reRender();
 };
 
-window.handleMpesaSync = async () => {
-  const billId = pendingOrderData?.billId || pendingOrderData?._id;
-  if (!billId) return;
 
-  mpesaStatus = 'verifying';
-  reRender();
-
-  try {
-    const pollResult = await store.pollBillStatus(billId, (status) => {
-      mpesaStatus = status;
-      reRender();
-    });
-
-    if (pollResult.success) {
-      if (!pendingOrderData.billId) store.clearCart();
-      mpesaStatus = 'success';
-      reRender();
-      setTimeout(() => {
-        mpesaStatus = null;
-        pendingOrderData = null;
-        reRender();
-      }, 6000);
-    } else {
-      mpesaStatus = 'error';
-      mpesaError = pollResult.message;
-      reRender();
-    }
-  } catch (err) {
-    console.error('Manual Sync Error:', err);
-    mpesaStatus = 'error';
-    mpesaError = "Sync failed. Try again in 15 seconds.";
-    reRender();
-  }
-};
 
 window.promptPaymentMethod = (billId) => {
   payingBillId = billId;
@@ -508,146 +331,10 @@ window.cancelPayment = () => {
   reRender();
 };
 
-window.closeMpesaPrompt = () => {
-  isMpesaPromptOpen = false;
-  pendingOrderData = null;
-  reRender();
-};
-
-window.triggerStkPush = () => {
-  if (store.isPaymentProcessing) return;
-  const phone = document.getElementById('mpesa-phone-input')?.value || mpesaPhone;
-  if (!phone || phone.length < 10) {
-    mpesaError = "Please enter a valid M-Pesa phone number";
-    mpesaStatus = 'error';
-    reRender();
-    return;
-  }
-  
-  mpesaPhone = phone;
-  isMpesaPromptOpen = false;
-  mpesaStatus = 'sending';
-  store.isPaymentProcessing = true;
-  
-  // Hard DOM Lock (redundant with reRender but safe)
-  const btn = document.getElementById('send-stk-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.innerText = 'Processing...';
-  }
-
-  reRender();
-
-  (async () => {
-    // Stage 1: Initializing
-    // Stage 1: Transitioning IMMEDIATELY to 'Waiting for PIN'
-    mpesaStatus = 'pending';
-    reRender();
-    
-    if (!pendingOrderData) return;
-    
-    try {
-      let billId = pendingOrderData.billId;
-      let amount = 0;
-
-      if (billId) {
-        const existingBill = store.bills.find(b => (b.id === billId || b._id === billId));
-        amount = existingBill ? existingBill.total : 0;
-      } else {
-        const newBill = await store.createBill({
-          ...pendingOrderData,
-          paymentMethod: 'M-Pesa',
-          status: 'PENDING'
-        });
-        billId = newBill ? (newBill._id || newBill.id) : null;
-        amount = newBill ? newBill.total : 0;
-      }
-
-      if (billId && amount > 0) {
-        activePollBillId = billId;
-        const res = await store.triggerStkPushApi(phone, amount, billId);
-        
-        if (res.ok) {
-          mpesaStatus = 'pending';
-          reRender();
-
-          const pollResult = await store.pollBillStatus(billId, (status) => {
-            if (status === 'PAID' || status === 'CONFIRMED') {
-              mpesaStatus = 'success';
-              reRender();
-            }
-          });
-          
-          if (pollResult.success) {
-            if (!pendingOrderData.billId) store.clearCart();
-            mpesaStatus = 'success';
-            reRender();
-            setTimeout(() => {
-              mpesaStatus = null;
-              activePollBillId = null;
-              reRender();
-            }, 6000); 
-          } else if (pollResult.message !== 'Polling cancelled.') {
-            mpesaStatus = 'error';
-            mpesaError = pollResult.message;
-            reRender();
-          }
-        } else {
-          if (res.status === 409 || res.data?.code === 'DUPLICATE_REQUEST') {
-            mpesaStatus = 'duplicate';
-            mpesaError = res.data?.message || 'A similar transaction is already underway. Please wait a moment.';
-          } else {
-            mpesaStatus = 'error';
-            mpesaError = res.data?.customerMessage || res.data?.message || 'Safaricom is currently unavailable. Please try again.';
-          }
-          reRender();
-        }
-      } else {
-        mpesaStatus = 'error';
-        mpesaError = "Failed to synchronize bill data.";
-        reRender();
-      }
-    } catch (err) {
-      console.error('M-Pesa Error:', err);
-      mpesaStatus = 'error';
-      mpesaError = err.response?.data?.message || err.message || "An unexpected error occurred.";
-      reRender();
-    } finally {
-      store.isPaymentProcessing = false;
-      if (mpesaStatus === 'success' || !mpesaStatus) {
-        pendingOrderData = null;
-      }
-      reRender();
-    }
-  })();
-};
-
-window.closeMpesaError = () => {
-  if (pendingOrderData && (pendingOrderData.billId || pendingOrderData._id)) {
-     store.stopPolling(pendingOrderData.billId || pendingOrderData._id);
-  }
-  mpesaStatus = null;
-  reRender();
-};
-
-window.cancelMpesa = () => {
-  if (pendingOrderData && (pendingOrderData.billId || pendingOrderData._id)) {
-      store.stopPolling(pendingOrderData.billId || pendingOrderData._id);
-  }
-  mpesaStatus = null;
-  reRender();
-};
-
 window.confirmPayment = (method) => {
-  if(payingBillId) {
-    if (method === 'M-Pesa') {
-      pendingOrderData = { billId: payingBillId };
-      isMpesaPromptOpen = true;
-      payingBillId = null;
-    } else {
-      store.updateBillStatus(payingBillId, 'PAID', method);
-      payingBillId = null;
-    }
+  if (payingBillId) {
+    store.updateBillStatus(payingBillId, 'PAID', method);
+    payingBillId = null;
     reRender();
   }
 };

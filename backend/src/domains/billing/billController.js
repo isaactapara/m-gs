@@ -170,6 +170,12 @@ const updateBillStatus = asyncHandler(async (req, res) => {
 
   assertBillAccess(existing, req.user);
 
+  if (existing.status === 'PAID' || existing.status === 'CONFIRMED') {
+    if (req.user.role !== 'owner') {
+      throw new AppError('Cannot modify a settled bill. Only owners can reopen transactions.', 403, 'BILL_IMMUTABLE');
+    }
+  }
+
   const dataToUpdate = {};
   if (req.body.status) {
     dataToUpdate.status = PAYMENT_STATUS_MAP[req.body.status] || req.body.status.toUpperCase();

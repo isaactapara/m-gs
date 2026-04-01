@@ -7,6 +7,7 @@ const asyncHandler = require('../../core/asyncHandler');
 const { env } = require('../../config/env');
 const logger = require('../../core/logger');
 const { recordAuditEvent } = require('../audit/auditLogService');
+const { clearUserCache } = require('../../middlewares/auth');
 
 const generateToken = (id) => jwt.sign({ id }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
 
@@ -125,6 +126,10 @@ const getUsers = asyncHandler(async (req, res) => {
 const updatePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
+  if (!newPassword || newPassword.length < 8) {
+    throw new AppError('Password must be at least 8 characters long', 400, 'WEAK_PASSWORD');
+  }
+
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
   const isMatch = await bcrypt.compare(currentPassword, user.password);
 
@@ -165,6 +170,8 @@ const toggleUserStatus = asyncHandler(async (req, res) => {
     data: { isActive: !user.isActive }
   });
 
+  clearUserCache(req.params.id);
+
   await recordAuditEvent({
     req,
     action: user.isActive ? 'staff.suspended' : 'staff.activated',
@@ -192,6 +199,8 @@ const deleteUser = asyncHandler(async (req, res) => {
   }
 
   await prisma.user.delete({ where: { id: req.params.id } });
+  
+  clearUserCache(req.params.id);
 
   await recordAuditEvent({
     req,

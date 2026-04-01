@@ -5,50 +5,78 @@ import { createIcons, icons } from 'lucide';
 import Chart from 'chart.js/auto';
 import jsPDF from 'jspdf';
 
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 let barChartInstance = null;
-let timeframe = 'week';
-let isLoading = false;
+let histogramTimeframe = 'week'; // controls only the histogram + trend card
+let allData = null;              // { day, week, month } from /summary/all
+let trendData = null;            // current histogram dataset
+let isInitialLoad = true;
+let isHistogramLoading = false;
 let loadError = '';
-let reportData = null;
 
 const currency = () => store.settings.currency || 'KSH';
+const fmt = (n) => Number(n || 0).toLocaleString();
 
-const getRangeLabel = () => {
-  if (timeframe === 'day') return 'Today';
-  if (timeframe === 'month') return 'This Month';
-  return 'Last 7 Days';
-};
+const TIMEFRAME_LABELS = { day: 'Today', week: 'Last 7 Days', month: 'This Month' };
 
-const loadReport = async () => {
-  if (store.userRole !== 'owner') {
-    return;
-  }
+// ---------------------------------------------------------------------------
+// Data loading
+// ---------------------------------------------------------------------------
 
-  isLoading = true;
+const loadAllData = async () => {
+  if (store.userRole !== 'owner') return;
+
   loadError = '';
-  renderReports();
-
   try {
-    reportData = await store.fetchReportSummary(timeframe);
-  } catch (error) {
-    loadError = error.response?.data?.error?.message || error.message || 'Failed to load report data.';
+    allData = await store.fetchAllSummaries();
+    // Initialise histogram with the current selector setting
+    trendData = allData[histogramTimeframe]?.trend || [];
+  } catch (err) {
+    loadError = err.response?.data?.error?.message || err.message || 'Failed to load analytics.';
   } finally {
-    isLoading = false;
+    isInitialLoad = false;
     renderReports();
   }
 };
 
-window.setTimeframe = async (value) => {
-  timeframe = value;
-  await loadReport();
+const loadHistogram = async (tf) => {
+  if (store.userRole !== 'owner') return;
+
+  isHistogramLoading = true;
+  renderReports();
+
+  try {
+    // If we already have this timeframe in allData, use it instantly (zero-cost).
+    if (allData?.[tf]) {
+      trendData = allData[tf].trend || [];
+    } else {
+      const d = await store.fetchReportSummary(tf);
+      trendData = d.trend || [];
+    }
+  } catch (err) {
+    loadError = err.response?.data?.error?.message || err.message || '';
+  } finally {
+    isHistogramLoading = false;
+    renderReports();
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Window handlers
+// ---------------------------------------------------------------------------
+
+window.setHistogramTimeframe = async (value) => {
+  histogramTimeframe = value;
+  await loadHistogram(value);
 };
 
 window.exportToPDF = async () => {
-  if (!reportData) return;
+  if (!allData) return;
 
   const btn = document.getElementById('export-btn');
   const originalText = btn.innerHTML;
-
   btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> GENERATING...`;
   btn.classList.add('opacity-80', 'cursor-not-allowed');
   createIcons({ icons });
@@ -56,8 +84,10 @@ window.exportToPDF = async () => {
   try {
     const doc = new jsPDF('p', 'mm', 'a4');
     const margins = 20;
-    const summary = reportData.summary || {};
-    const trend = reportData.trend || [];
+    const summaryDay   = allData.day?.summary   || {};
+    const summaryWeek  = allData.week?.summary  || {};
+    const summaryMonth = allData.month?.summary || {};
+    const trend = trendData || [];
 
     const loadLogo = () => new Promise((resolve) => {
       const img = new Image();
@@ -67,72 +97,53 @@ window.exportToPDF = async () => {
     });
 
     const logoImg = await loadLogo();
-    if (logoImg) {
-      doc.addImage(logoImg, 'PNG', margins, margins - 5, 25, 25);
-    }
+    if (logoImg) doc.addImage(logoImg, 'PNG', margins, margins - 5, 25, 25);
 
     const titleX = logoImg ? margins + 35 : margins;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(8); doc.setTextColor(120, 120, 120);
     doc.text('THE', titleX, margins + 5);
-
-    doc.setFontSize(28);
-    doc.setTextColor(255, 0, 0);
+    doc.setFontSize(28); doc.setTextColor(255, 0, 0);
     doc.text("M&G's", titleX, margins + 13);
-
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10); doc.setTextColor(0, 0, 0);
     doc.text('RESTAURANT ANALYTICS', titleX, margins + 19);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Timeframe: ${getRangeLabel()}   |   Generated: ${new Date().toLocaleString()}`, titleX, margins + 24);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(120, 120, 120);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, titleX, margins + 24);
 
     let yPos = margins + 38;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Executive Summary', margins, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
+    doc.text('Sales Summary', margins, yPos);
 
     yPos += 10;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.text(`Total Revenue: ${currency()} ${Number(summary.totalSales || 0).toLocaleString()}`, margins, yPos);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11);
+    doc.text(`Total Sales Today:      ${currency()} ${fmt(summaryDay.totalSales)}   (${summaryDay.billCount || 0} bills)`, margins, yPos);
     yPos += 7;
-    doc.text(`Total Bills: ${summary.billCount || 0}`, margins, yPos);
+    doc.text(`Total Sales This Week:  ${currency()} ${fmt(summaryWeek.totalSales)}   (${summaryWeek.billCount || 0} bills)`, margins, yPos);
     yPos += 7;
-    doc.text(`Active Staff: ${summary.activeUsersCount || 0}`, margins, yPos);
-
+    doc.text(`Total Sales This Month: ${currency()} ${fmt(summaryMonth.totalSales)}   (${summaryMonth.billCount || 0} bills)`, margins, yPos);
+    yPos += 7;
+    doc.text(`Active Staff Now: ${summaryDay.activeUsersCount || 0}`, margins, yPos);
 
     yPos += 12;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Trend Breakdown', margins, yPos);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
+    doc.text(`Trend: ${TIMEFRAME_LABELS[histogramTimeframe]}`, margins, yPos);
 
     yPos += 10;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     doc.text('Period', margins, yPos);
     doc.text('Total Sales', margins + 100, yPos);
-
     yPos += 4;
     doc.line(margins, yPos, 210 - margins, yPos);
     yPos += 8;
 
     trend.forEach((entry) => {
-      if (yPos > 270) {
-        doc.addPage();
-        yPos = margins + 10;
-      }
-
+      if (yPos > 270) { doc.addPage(); yPos = margins + 10; }
       doc.text(entry.label, margins, yPos);
-      doc.text(`${currency()} ${Number(entry.totalSales || 0).toLocaleString()}`, margins + 100, yPos);
+      doc.text(`${currency()} ${fmt(entry.totalSales)}`, margins + 100, yPos);
       yPos += 6;
     });
 
-    doc.save(`MandGs-Analytics-${timeframe}-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`MandGs-Analytics-${new Date().toISOString().split('T')[0]}.pdf`);
   } catch (error) {
     console.error('PDF export failed:', error);
   } finally {
@@ -142,18 +153,22 @@ window.exportToPDF = async () => {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+
 function renderReports() {
   const isDarkMode = store.isDarkMode;
-  const summary = reportData?.summary || {};
-  const trend = reportData?.trend || [];
+  const card = (isDarkMode)
+    ? 'bg-black border-[#111]'
+    : 'bg-white border-gray-100';
 
   if (store.userRole !== 'owner') {
-
     document.getElementById('root').innerHTML = renderLayout(`
       <div class="flex flex-col items-center justify-center min-h-[50vh]">
         <i data-lucide="shield-alert" class="w-16 h-16 text-[#FF0000] mb-4 opacity-50"></i>
         <h2 class="text-2xl font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}">Access Denied</h2>
-        <p class="text-gray-500 font-bold mt-2">Only owners can access analytics.</p>
+        <p class="text-gray-400 font-bold mt-2">Only owners can access analytics.</p>
       </div>
     `, '/reports.html');
     initLayoutListeners();
@@ -161,107 +176,160 @@ function renderReports() {
     return;
   }
 
-  const stats = [
-    {
-      label: 'Total Revenue',
-      value: `${currency()} ${Number(summary.totalSales || 0).toLocaleString()}`,
-      icon: 'badge-dollar-sign',
-      growth: `${summary.billCount || 0} bills`,
-      positive: true,
-    },
-    {
-      label: 'Active Now',
-      value: `${summary.activeUsersCount || 0}`,
-      icon: 'user-check',
-      growth: summary.activeUsernames?.length > 0 
-        ? summary.activeUsernames.join(', ')
-        : 'No staff online',
-      positive: true,
-    },
+  const daySum   = allData?.day?.summary   || {};
+  const weekSum  = allData?.week?.summary  || {};
+  const monthSum = allData?.month?.summary || {};
 
+  // Three stat cards — always above the fold
+  const statCards = [
+    {
+      label: 'Total Sales Today',
+      value: `${currency()} ${fmt(daySum.totalSales)}`,
+      sub: `${daySum.billCount || 0} bills`,
+      icon: 'sun',
+      accent: 'text-amber-500',
+      bg: 'bg-amber-500/10',
+    },
+    {
+      label: 'Total Sales This Week',
+      value: `${currency()} ${fmt(weekSum.totalSales)}`,
+      sub: `${weekSum.billCount || 0} bills`,
+      icon: 'calendar-days',
+      accent: 'text-[#FF0000]',
+      bg: 'bg-red-500/10',
+    },
+    {
+      label: 'Total Sales This Month',
+      value: `${currency()} ${fmt(monthSum.totalSales)}`,
+      sub: `${monthSum.billCount || 0} bills`,
+      icon: 'trending-up',
+      accent: 'text-blue-500',
+      bg: 'bg-blue-500/10',
+    },
+    {
+      label: 'Active Staff Now',
+      value: `${daySum.activeUsersCount || 0}`,
+      sub: daySum.activeUsernames?.length > 0
+        ? daySum.activeUsernames.slice(0, 3).join(', ')
+        : 'No staff online',
+      icon: 'user-check',
+      accent: 'text-green-500',
+      bg: 'bg-green-500/10',
+    },
   ];
 
-
   const html = `
-    <div class="lg:h-[calc(100vh-80px)] flex-1 flex flex-col pt-4 md:pt-0 overflow-hidden bg-gray-50/10 dark:bg-black p-4 md:p-8 space-y-6 md:space-y-8 relative">
-      <div class="flex flex-col items-center select-none w-full border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'} pb-6">
-        <span class="text-[9px] font-black uppercase tracking-[0.8em] text-gray-400 mb-1 ml-[0.8em]">THE</span>
-        <h2 class="text-5xl font-black text-[#FF0000] tracking-tighter leading-[0.85] mb-2 drop-shadow-sm">M&G's</h2>
-        <div class="flex items-center gap-4 w-full px-12">
-          <div class="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
-          <span class="text-[12px] font-black uppercase tracking-[0.6em] ${isDarkMode ? 'text-white' : 'text-gray-900'} whitespace-nowrap ml-[0.6em]">RESTAURANT</span>
-          <div class="h-px bg-gray-200 dark:bg-gray-800 flex-1"></div>
-        </div>
-      </div>
+    <div class="flex flex-col overflow-y-auto h-[calc(100vh-80px)] -m-4 md:-m-8 p-4 md:p-8 space-y-6 bg-gray-50/10 dark:bg-black">
 
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="relative flex items-center ${isDarkMode ? 'bg-black border border-gray-900' : 'bg-white'} rounded-2xl shadow-sm px-4">
-          <i data-lucide="calendar" class="w-4 h-4 text-[#FF0000] absolute left-4 pointer-events-none"></i>
-          <select onchange="window.setTimeframe(this.value)" class="pl-8 py-3 pr-8 bg-transparent text-xs font-black uppercase tracking-widest text-[#FF0000] outline-none cursor-pointer appearance-none">
-            <option value="day" ${timeframe === 'day' ? 'selected' : ''}>Today</option>
-            <option value="week" ${timeframe === 'week' ? 'selected' : ''}>Last 7 Days</option>
-            <option value="month" ${timeframe === 'month' ? 'selected' : ''}>This Month</option>
-          </select>
-          <i data-lucide="chevron-down" class="w-4 h-4 text-[#FF0000] pointer-events-none absolute right-4"></i>
+      <!-- Page header -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 class="text-3xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}">
+            Analytics
+          </h1>
+          <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">
+            M&amp;G's Restaurant · Settled bills only
+          </p>
         </div>
-        <button id="export-btn" onclick="window.exportToPDF()" ${!reportData || isLoading ? 'disabled' : ''} class="flex justify-center items-center gap-2 px-6 py-3 bg-[#FF0000] text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-          <i data-lucide="download" class="w-4 h-4"></i> Export
-        </button>
+        <div class="flex items-center gap-3 flex-wrap">
+          ${isInitialLoad ? '' : `
+            <button
+              id="export-btn"
+              onclick="window.exportToPDF()"
+              ${!allData ? 'disabled' : ''}
+              class="flex items-center gap-2 px-5 py-2.5 bg-[#FF0000] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i> Export PDF
+            </button>
+          `}
+        </div>
       </div>
 
       ${loadError ? `
-        <div class="p-4 rounded-2xl bg-red-50 text-red-600 border border-red-200 font-bold text-sm">
+        <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 text-red-600 border border-red-200 dark:border-red-800 font-bold text-sm">
           ${store.sanitize(loadError)}
         </div>
       ` : ''}
 
-      ${isLoading ? `
-        <div class="flex-1 flex items-center justify-center rounded-[32px] border ${isDarkMode ? 'bg-black border-gray-900 text-gray-400' : 'bg-white border-gray-100 text-gray-500'}">
-          <div class="flex items-center gap-3 font-black uppercase tracking-widest text-xs">
-            <i data-lucide="loader" class="w-5 h-5 animate-spin"></i> Loading report data...
-          </div>
-        </div>
-      ` : `
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
-          ${stats.map((stat) => `
-            <div class="p-6 md:p-8 rounded-[2rem] md:rounded-[32px] border shadow-sm flex flex-col justify-between ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'} relative overflow-hidden col-span-1 sm:col-span-2 xl:col-span-1">
-              <div class="relative z-10 flex justify-between items-start mb-6">
-                <div class="p-4 rounded-2xl bg-red-100 text-[#FF0000] dark:bg-red-500/20 shadow-inner">
-                  <i data-lucide="${stat.icon}" class="w-6 h-6"></i>
+      <!-- Stat cards: always above the fold -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        ${isInitialLoad
+          ? Array.from({ length: 4 }).map(() => `
+              <div class="p-6 rounded-[28px] border ${card} animate-pulse space-y-4">
+                <div class="w-10 h-10 rounded-2xl bg-gray-200 dark:bg-gray-800"></div>
+                <div class="h-8 w-3/4 bg-gray-200 dark:bg-gray-800 rounded-xl"></div>
+                <div class="h-4 w-1/2 bg-gray-100 dark:bg-gray-900 rounded-xl"></div>
+              </div>
+            `).join('')
+          : statCards.map((s) => `
+              <div class="p-6 rounded-[28px] border shadow-sm flex flex-col gap-4 ${card}">
+                <div class="flex justify-between items-start">
+                  <div class="p-3 rounded-2xl ${s.bg} ${s.accent}">
+                    <i data-lucide="${s.icon}" class="w-5 h-5"></i>
+                  </div>
+                  <span class="text-[10px] font-black uppercase tracking-widest text-zinc-500 bg-gray-100 dark:bg-[#0a0a0a] px-2 py-1 rounded-full border dark:border-[#111]">
+                    ${store.sanitize(s.sub)}
+                  </span>
                 </div>
-                <div class="flex items-center px-3 py-1.5 rounded-full bg-green-50 text-green-500 text-[10px] md:text-xs font-black border">
-                  ${store.sanitize(stat.growth)}
+                <div>
+                  <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">
+                    ${store.sanitize(s.label)}
+                  </p>
+                  <h3 class="text-3xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}">
+                    ${store.sanitize(s.value)}
+                  </h3>
                 </div>
               </div>
-              <div class="relative z-10">
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">${store.sanitize(stat.label)}</p>
-                <h3 class="text-3xl md:text-4xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}">${store.sanitize(stat.value)}</h3>
-              </div>
-            </div>
-          `).join('')}
-        </div>
+            `).join('')
+        }
+      </div>
 
-        <div class="w-full pb-8 md:pb-10 flex-1 flex flex-col">
-          <div class="w-full p-6 md:p-8 rounded-[2rem] md:rounded-[40px] border shadow-sm flex-1 flex flex-col ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'}">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 md:mb-8">
-              <div>
-                <h4 class="font-black text-lg md:text-xl ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight">Sales Histogram</h4>
-                <p class="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">${getRangeLabel()}</p>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 text-[10px] md:text-xs font-bold text-gray-400">
-                  <div class="w-3 h-3 rounded-md bg-[#FF0000]"></div> Total Sales
-                </div>
-              </div>
+      <!-- Histogram panel -->
+      <div class="flex-1 min-h-0 flex flex-col">
+        <div class="rounded-[32px] border shadow-sm flex-1 flex flex-col overflow-hidden ${card}">
+          <!-- chart header -->
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 md:p-8 border-b ${isDarkMode ? 'border-[#111]' : 'border-gray-100'}">
+            <div>
+              <h2 class="font-black text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight">
+                Sales Histogram
+              </h2>
+              <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                ${TIMEFRAME_LABELS[histogramTimeframe]} · settled transactions only
+              </p>
             </div>
-            <div class="flex-1 w-full min-h-[300px] md:min-h-[400px] relative">
-              <canvas id="barChart"></canvas>
+            <!-- Timeframe selector for histogram only -->
+            <div class="flex items-center gap-1 bg-gray-100 dark:bg-black border dark:border-[#111] p-1 rounded-xl">
+              ${Object.entries(TIMEFRAME_LABELS).map(([tf, lbl]) => `
+                <button
+                  onclick="window.setHistogramTimeframe('${tf}')"
+                  class="px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    histogramTimeframe === tf
+                      ? 'bg-white dark:bg-[#111] text-[#FF0000] shadow-sm border dark:border-white/10'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  }"
+                >
+                  ${lbl}
+                </button>
+              `).join('')}
             </div>
           </div>
+
+          <!-- chart body -->
+          <div class="flex-1 p-6 md:p-8 min-h-[320px] relative">
+            ${isHistogramLoading ? `
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="flex items-center gap-3 font-black uppercase tracking-widest text-xs text-gray-400">
+                  <i data-lucide="loader" class="w-5 h-5 animate-spin"></i> Loading chart...
+                </div>
+              </div>
+            ` : `
+              <canvas id="barChart" class="w-full h-full"></canvas>
+            `}
+          </div>
         </div>
-      `}
+      </div>
+
     </div>
-
   `;
 
   document.getElementById('root').innerHTML = renderLayout(html, '/reports.html');
@@ -269,58 +337,79 @@ function renderReports() {
 
   setTimeout(() => {
     createIcons({ icons });
-    if (!isLoading && reportData) {
-      initCharts(isDarkMode, trend);
+    if (!isHistogramLoading && trendData) {
+      initChart(isDarkMode, trendData);
     }
   }, 0);
 }
 
-function initCharts(isDarkMode, trend) {
-  const labels = trend.map((entry) => entry.label);
-  const totalSales = trend.map((entry) => entry.totalSales || 0);
-  const gridColor = isDarkMode ? '#222' : '#f0f0f0';
+// ---------------------------------------------------------------------------
+// Chart.js initialisation
+// ---------------------------------------------------------------------------
 
-  const barCtx = document.getElementById('barChart');
-  if (!barCtx) return;
+function initChart(isDarkMode, trend) {
+  const ctx = document.getElementById('barChart');
+  if (!ctx) return;
 
   if (barChartInstance) {
     barChartInstance.destroy();
+    barChartInstance = null;
   }
 
-  barChartInstance = new Chart(barCtx, {
+  const labels     = trend.map((e) => e.label);
+  const values     = trend.map((e) => Number(e.totalSales) || 0);
+  const maxVal     = Math.max(...values, 1);
+  const gridColor  = isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.05)';
+  const tickColor  = isDarkMode ? '#444' : '#bbb';
+
+  barChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
-      datasets: [
-        {
-          label: 'Total Sales',
-          data: totalSales,
-          backgroundColor: '#FF0000',
-          borderRadius: 6,
-        },
-      ],
+      datasets: [{
+        label: 'Total Sales',
+        data: values,
+        backgroundColor: values.map((v) => {
+          const intensity = maxVal > 0 ? v / maxVal : 0;
+          const alpha = 0.4 + intensity * 0.6;
+          return `rgba(255,0,0,${alpha.toFixed(2)})`;
+        }),
+        borderRadius: { topLeft: 8, topRight: 8 },
+        borderSkipped: false,
+      }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: { duration: 600, easing: 'easeOutQuart' },
       plugins: {
-        legend: {
-          display: false,
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDarkMode ? '#111' : '#fff',
+          titleColor: isDarkMode ? '#fff' : '#111',
+          bodyColor: isDarkMode ? '#aaa' : '#555',
+          borderColor: isDarkMode ? '#333' : '#eee',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { weight: 'bold', size: 13 },
+          callbacks: {
+            label: (ctx) => ` ${currency()} ${fmt(ctx.parsed.y)}`,
+          },
         },
       },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: isDarkMode ? '#888' : '#aaa', font: { weight: 'bold' } },
+          ticks: { color: tickColor, font: { weight: 'bold', size: 11 } },
+          border: { display: false },
         },
         y: {
-          grid: { color: gridColor, drawBorder: false, borderDash: [5, 5] },
+          grid: { color: gridColor, drawBorder: false },
+          border: { display: false, dash: [4, 4] },
           ticks: {
-            color: isDarkMode ? '#888' : '#aaa',
-            font: { weight: 'bold' },
-            callback(value) {
-              return value >= 1000 ? `${value / 1000}k` : value;
-            },
+            color: tickColor,
+            font: { weight: 'bold', size: 11 },
+            callback: (v) => v >= 1000 ? `${v / 1000}k` : v,
           },
           beginAtZero: true,
         },
@@ -329,12 +418,14 @@ function initCharts(isDarkMode, trend) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Bootstrap
+// ---------------------------------------------------------------------------
 
 store.subscribe(() => {
-  if (!isLoading) {
-    renderReports();
-  }
+  if (!isInitialLoad) renderReports();
 });
 
+// Render skeleton first — data arrives asynchronously
 renderReports();
-loadReport();
+loadAllData();

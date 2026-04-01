@@ -5,6 +5,11 @@ const toInt = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toList = (value) => String(value || '')
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: toInt(process.env.PORT, 5000),
@@ -12,18 +17,8 @@ const env = {
   directUrl: process.env.DIRECT_URL || '',
   jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
-  mpesaShortcode: process.env.MPESA_SHORTCODE || '',
-  mpesaPasskey: process.env.MPESA_PASSKEY || '',
-  mpesaConsumerKey: process.env.MPESA_CONSUMER_KEY || '',
-  mpesaConsumerSecret: process.env.MPESA_CONSUMER_SECRET || '',
   mpesaCallbackUrl: process.env.MPESA_CALLBACK_URL || '',
-  mpesaCallbackSecret: process.env.MPESA_CALLBACK_SECRET || '',
-  mpesaAmountTolerance: toInt(process.env.MPESA_AMOUNT_TOLERANCE, 1),
-  mpesaRequestTimeoutMs: toInt(process.env.MPESA_REQUEST_TIMEOUT_MS, 45000),
-  mpesaDuplicateWindowMs: toInt(process.env.MPESA_DUPLICATE_WINDOW_MS, 60000),
-  reconciliationLookbackMs: toInt(process.env.MPESA_RECONCILIATION_LOOKBACK_MS, 10 * 60 * 1000),
-  reconciliationBatchSize: toInt(process.env.MPESA_RECONCILIATION_BATCH_SIZE, 25),
-  reconciliationIntervalMs: toInt(process.env.MPESA_RECONCILIATION_INTERVAL_MS, 3 * 60 * 1000),
+  corsAllowedOrigins: toList(process.env.CORS_ALLOWED_ORIGINS),
 };
 
 const assertRequiredConfig = () => {

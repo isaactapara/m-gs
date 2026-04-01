@@ -38,16 +38,16 @@ function renderBills() {
   const html = `
     <div class="h-[calc(100vh-80px)] -m-4 md:-m-8 flex flex-col overflow-hidden bg-gray-50/30 dark:bg-transparent relative">
       <!-- Table Header / Actions -->
-      <div class="p-6 border-b flex flex-wrap gap-4 items-center justify-between z-10 backdrop-blur-md ${isDarkMode ? "bg-black/80 border-gray-900" : "bg-white/80 border-gray-100"}">
+      <div class="p-6 border-b flex flex-wrap gap-4 items-center justify-between z-10 backdrop-blur-md ${isDarkMode ? "bg-black/80 border-[#111]" : "bg-white/80 border-gray-100"}">
         <div class="flex items-center gap-6">
           <h2 class="text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}">Transaction Ledger</h2>
-          <div class="flex bg-gray-100 dark:bg-black p-1 rounded-xl border dark:border-gray-900">
+          <div class="flex bg-gray-100 dark:bg-black p-1 rounded-xl border dark:border-[#111]">
             ${['ALL', 'PAID', 'PENDING'].map(status => `
               <button 
                 onclick="window.setFilterStatus('${status}')"
                 class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   filterStatus === status 
-                    ? "bg-white dark:bg-black text-[#FF0000] shadow-sm border dark:border-gray-900" 
+                    ? "bg-white dark:bg-[#111] text-[#FF0000] shadow-sm border dark:border-white/10" 
                     : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                 }"
               >
@@ -65,7 +65,7 @@ function renderBills() {
               id="search-input"
               placeholder="Search by Bill # or Dish..."
               value="${search}"
-              class="pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium w-64 transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black border border-gray-900 text-white" : "bg-gray-100 border-transparent text-gray-900"}"
+              class="pl-10 pr-4 py-2.5 rounded-xl text-sm font-medium w-64 transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black border border-[#111] text-white" : "bg-gray-100 border-transparent text-gray-900"}"
             />
           </div>
           ${userRole === 'owner' ? `
@@ -78,11 +78,11 @@ function renderBills() {
 
       <!-- Main Table Content -->
       <div class="flex-1 overflow-auto p-2 md:p-6 styled-scrollbar">
-        <div class="rounded-3xl md:rounded-[32px] overflow-hidden border shadow-sm ${isDarkMode ? "bg-black border-gray-900" : "bg-white border-gray-100"}">
+        <div class="rounded-3xl md:rounded-[32px] overflow-hidden border shadow-sm ${isDarkMode ? "bg-black border-[#111]" : "bg-white border-gray-100"}">
           <div class="overflow-x-auto w-full">
           <table class="w-full text-left border-collapse min-w-[800px]">
             <thead>
-              <tr class="border-b text-[10px] font-black uppercase tracking-widest ${isDarkMode ? "bg-black border-gray-800 text-gray-500" : "bg-gray-50 border-gray-100 text-gray-400"}">
+              <tr class="border-b text-[10px] font-black uppercase tracking-widest ${isDarkMode ? "bg-black border-[#111] text-gray-500" : "bg-gray-50 border-gray-100 text-gray-400"}">
                 <th class="px-6 py-4 px-2">Bill Number</th>
                 <th class="px-6 py-4 px-2">Date & Time</th>
                 <th class="px-6 py-4 px-2">Items</th>
@@ -94,7 +94,7 @@ function renderBills() {
                 <th class="px-6 py-4 px-2 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody class="divide-y divide-gray-100 dark:divide-[#111]">
               ${filteredBills.map((bill) => `
                 <tr 
                   onclick="window.openBillModal('${bill.id}')"
@@ -177,7 +177,7 @@ function renderBills() {
           onclick="window.closeBillModal()"
         >
           <div 
-            class="w-full max-w-2xl rounded-3xl md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-full transition-transform slide-in-from-bottom-4 ${isDarkMode ? "bg-black border border-gray-900" : "bg-white"}"
+            class="w-full max-w-2xl rounded-3xl md:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-full transition-transform slide-in-from-bottom-4 ${isDarkMode ? "bg-black border border-[#111]" : "bg-white"}"
             onclick="event.stopPropagation()"
           >
             <div class="bg-[#FF0000] p-10 text-white flex justify-between items-start shrink-0">
@@ -206,7 +206,7 @@ function renderBills() {
                   ${selectedBill.items.map(item => `
                     <div class="flex justify-between items-center group">
                       <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center font-black text-[#FF0000] text-sm">
+                        <div class="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#111] flex items-center justify-center font-black text-[#FF0000] text-sm border dark:border-white/5">
                           ${item.quantity}x
                         </div>
                         <span class="font-bold text-lg ${isDarkMode ? "text-gray-200" : "text-gray-800"}">${item.name}</span>
@@ -219,7 +219,7 @@ function renderBills() {
                 </div>
               </div>
 
-              <div class="pt-8 border-t border-gray-100 dark:border-gray-800 space-y-4">
+              <div class="pt-8 border-t border-gray-100 dark:border-[#111] space-y-4">
                 <div class="flex justify-between items-center text-gray-400 font-bold">
                   <span class="uppercase tracking-widest text-xs">Payment Method</span>
                   <span class="text-sm flex items-center gap-2">

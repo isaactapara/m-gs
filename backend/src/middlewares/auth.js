@@ -6,6 +6,8 @@ const { env } = require('../config/env');
 const NodeCache = require('node-cache');
 const userCache = new NodeCache({ stdTTL: 120, checkperiod: 60 });
 
+const clearUserCache = (id) => userCache.del(id);
+
 const unauthorized = (res, requestId, message, code = 'UNAUTHORIZED') => res.status(401).json({
   success: false,
   error: {
@@ -120,4 +122,5 @@ module.exports = {
   protect,
   ownerOnly,
   staffOnly,
+  clearUserCache,
 };

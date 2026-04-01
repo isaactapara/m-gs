@@ -8,12 +8,8 @@ let selectedCategory = 'All';
 let isAddItemOpen = false;
 let editingItem = null;
 let paymentMethod = 'M-Pesa';
-let paymentStatus = 'idle';
-let isMpesaPromptOpen = false;
-let mpesaStatus = null; // null, 'sending', 'pending', 'success', 'error'
-let mpesaError = '';
-let mpesaPhone = '';
-let pendingOrderData = null;
+
+
 
 // Form Data State
 let formData = {
@@ -47,7 +43,7 @@ function renderMenu() {
       <!-- Main Content Area (Menu Grid) -->
       <div class="flex-1 flex flex-col overflow-hidden bg-gray-50/30 dark:bg-black relative">
         <!-- Search & Actions Header -->
-        <div class="p-6 border-b flex flex-wrap gap-4 items-center justify-between sticky top-0 z-10 backdrop-blur-md ${isDarkMode ? "bg-black/80 border-gray-900" : "bg-white/80 border-gray-200"}">
+        <div class="p-6 border-b flex flex-wrap gap-4 items-center justify-between sticky top-0 z-10 backdrop-blur-md ${isDarkMode ? "bg-black/80 border-[#111]" : "bg-white/80 border-gray-200"}">
           <div class="flex items-center gap-4 flex-1 min-w-[300px]">
             <div class="relative flex-1 max-w-md">
               <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
@@ -56,7 +52,7 @@ function renderMenu() {
                 id="search-input"
                 placeholder="Find dishes, drinks, appetizers..."
                 value="${search}"
-                class="w-full pl-12 pr-4 py-3 rounded-2xl text-sm font-medium transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black text-white border-gray-900 border" : "bg-gray-100 text-gray-900 border-transparent shadow-sm"}"
+                class="w-full pl-12 pr-4 py-3 rounded-2xl text-sm font-medium transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black text-white border-[#111] border" : "bg-gray-100 text-gray-900 border-transparent shadow-sm"}"
               />
             </div>
             
@@ -65,7 +61,7 @@ function renderMenu() {
                 <button onclick="window.setCategory('${cat}')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   selectedCategory === cat
                     ? "bg-[#FF0000] text-white shadow-lg shadow-red-500/20"
-                    : "bg-gray-200 dark:bg-black border dark:border-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-900"
+                    : "bg-gray-200 dark:bg-black border dark:border-[#111] text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-900"
                 }">
                   ${store.sanitize(cat)}
                 </button>
@@ -95,7 +91,7 @@ function renderMenu() {
                 <div class="rounded-[28px] p-6 flex flex-col justify-between shadow-xl border-2 transition-all relative group cursor-pointer ${
                     quantity > 0 
                       ? "border-[#FF0000] " + (isDarkMode ? "bg-black" : "bg-red-50/20") 
-                      : "border-transparent hover:border-gray-300 dark:hover:border-gray-700 " + (isDarkMode ? "bg-black" : "bg-white")
+                      : "border-transparent hover:border-gray-300 dark:hover:border-zinc-800 " + (isDarkMode ? "bg-black" : "bg-white")
                   }" onclick="window.handleAdd('${item.id}')">
                   
                   ${userRole === 'owner' ? `
@@ -131,12 +127,12 @@ function renderMenu() {
                     </div>
                   </div>
 
-                  <div class="mt-8 flex items-center justify-between bg-gray-50 dark:bg-black border dark:border-gray-900 rounded-2xl p-2 relative z-10">
+                  <div class="mt-8 flex items-center justify-between bg-gray-50 dark:bg-black border dark:border-[#111] rounded-2xl p-2 relative z-10">
                      ${quantity > 0 ? `
                         <div class="flex items-center gap-3 w-full justify-between" onclick="event.stopPropagation()">
                           <button 
                             onclick="window.handleRemove('${item.id}')"
-                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-gray-700 border dark:border-gray-600 shadow-sm text-[#FF0000] active:scale-90 transition-transform"
+                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#111] border dark:border-white/5 shadow-sm text-[#FF0000] active:scale-90 transition-transform"
                           >
                             <i data-lucide="minus" class="w-[18px] h-[18px]"></i>
                           </button>
@@ -151,7 +147,7 @@ function renderMenu() {
                           </button>
                         </div>
                      ` : `
-                       <div class="w-full py-3 flex items-center justify-center gap-2 rounded-xl font-black text-sm transition-all bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-[#FF0000] hover:text-white pointer-events-none">
+                        <div class="w-full py-3 flex items-center justify-center gap-2 rounded-xl font-black text-sm transition-all bg-gray-200 dark:bg-[#111] text-gray-700 dark:text-gray-400 hover:bg-[#FF0000] hover:text-white pointer-events-none border dark:border-white/5">
                          <i data-lucide="plus" class="w-[18px] h-[18px]"></i> Add to Order
                        </div>
                      `}
@@ -164,7 +160,7 @@ function renderMenu() {
       </div>
 
       <!-- Checkout Sidebar (Right Side) -->
-      <div class="w-full lg:w-[450px] border-l flex flex-col p-8 lg:h-full shadow-2xl z-20 ${isDarkMode ? "bg-black border-gray-900" : "bg-white border-gray-200"}">
+      <div class="w-full lg:w-[450px] border-l flex flex-col p-8 lg:h-full shadow-2xl z-20 ${isDarkMode ? "bg-black border-[#111]" : "bg-white border-gray-200"}">
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-[#FF0000] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-red-500/20">
@@ -187,8 +183,8 @@ function renderMenu() {
               <p class="font-bold text-sm tracking-widest uppercase">Cart is empty</p>
             </div>
           ` : cart.map(item => `
-              <div class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-black/50 border dark:border-gray-900 relative group">
-                <div class="w-12 h-12 rounded-xl bg-white dark:bg-gray-900 flex items-center justify-center font-black text-[#FF0000] shadow-sm">
+              <div class="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-zinc-950/50 border dark:border-[#111] relative group">
+                <div class="w-12 h-12 rounded-xl bg-white dark:bg-[#111] flex items-center justify-center font-black text-[#FF0000] shadow-sm border dark:border-white/5">
                   ${item.quantity}x
                 </div>
                 <div class="flex-1">
@@ -216,11 +212,11 @@ function renderMenu() {
             </div>
 
             <!-- Payment Methods -->
-            <div class="flex gap-2 p-1.5 rounded-2xl bg-gray-100 dark:bg-black border dark:border-gray-900">
+            <div class="flex gap-2 p-1.5 rounded-2xl bg-gray-100 dark:bg-[#0a0a0a] border dark:border-[#111]">
               ${['M-Pesa', 'Cash'].map(method => `
                 <button onclick="window.setPayment('${method}')" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
                   paymentMethod === method 
-                    ? "bg-white dark:bg-black shadow-sm text-gray-900 dark:text-white border dark:border-gray-900" 
+                    ? "bg-white dark:bg-[#111] shadow-sm text-gray-900 dark:text-white border dark:border-white/10" 
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
                 }">
                   ${method}
@@ -255,7 +251,7 @@ function renderMenu() {
           class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity animate-in fade-in"
           onclick="window.closeAddItemModal()"
         ></div>
-        <div class="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 shadow-2xl p-8 flex flex-col transition-transform slide-in-from-right animate-in ${isDarkMode ? "bg-black border-l border-gray-900" : "bg-white"}">
+        <div class="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 shadow-2xl p-8 flex flex-col transition-transform slide-in-from-right animate-in ${isDarkMode ? "bg-black border-l border-[#111]" : "bg-white"}">
           <div class="flex justify-between items-center mb-10">
             <h2 class="text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}">
               ${editingItem ? 'Edit Dish' : 'New Dish'}
@@ -284,7 +280,7 @@ function renderMenu() {
                 id="form-price"
                 required min="1"
                 value="${formData.price}"
-                class="w-full p-4 rounded-2xl font-black transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black border border-gray-900 text-white" : "bg-gray-50 text-gray-900 border-transparent"}"
+                class="w-full p-4 rounded-2xl font-black transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black border border-[#111] text-white" : "bg-gray-50 text-gray-900 border-transparent"}"
               />
             </div>
 
@@ -315,101 +311,7 @@ function renderMenu() {
         </div>
       ` : ''}
 
-      <!-- M-Pesa Phone Prompt Modal -->
-      ${isMpesaPromptOpen ? `
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center animate-in fade-in">
-          <div class="p-10 rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col gap-6 scale-in-center ${isDarkMode ? "bg-gray-950 border border-gray-900" : "bg-white"}">
-            <div class="text-center space-y-4">
-              <div class="w-20 h-20 rounded-3xl bg-green-100 text-green-600 dark:bg-green-500/10 flex items-center justify-center mx-auto shadow-inner">
-                <i data-lucide="smartphone" class="w-10 h-10"></i>
-              </div>
-              <h3 class="text-3xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}">M-Pesa Push</h3>
-              <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Enter customer's M-Pesa number</p>
-            </div>
-            
-            <div class="space-y-4">
-              <div class="relative group">
-                <i data-lucide="phone" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#FF0000] transition-colors"></i>
-                <input 
-                  type="tel" 
-                  id="mpesa-phone-input"
-                  placeholder="07XXXXXXXX"
-                  value="${mpesaPhone}"
-                  oninput="window.mpesaPhone = this.value"
-                  class="w-full pl-14 pr-5 py-5 rounded-2xl text-lg font-black tracking-widest transition-all focus:ring-4 focus:ring-red-500/10 focus:outline-none ${isDarkMode ? "bg-gray-800 text-white border-transparent" : "bg-gray-50 text-gray-900 border-transparent shadow-inner"}"
-                />
-              </div>
-              
-              <button onclick="window.triggerStkPush()" class="w-full py-5 rounded-2xl bg-[#FF0000] text-white font-black uppercase tracking-[0.2em] shadow-xl shadow-red-500/30 hover:bg-red-600 transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" ${store.isPaymentProcessing ? 'disabled' : ''}>
-                ${mpesaStatus === 'sending' ? 'Connecting...' : 'Send STK Push'}
-              </button>
-              <button onclick="window.closeMpesaPrompt()" class="w-full py-4 rounded-2xl font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ` : ''}
 
-      <!-- STK Pushing Overlay -->
-      ${mpesaStatus ? `
-        <div class="fixed inset-0 bg-[#FF0000]/95 backdrop-blur-xl z-[9999] flex flex-col items-center justify-center text-white px-8 text-center animate-in fade-in" 
-             ${mpesaStatus === 'pending' ? 'onclick="window.cancelMpesa()"' : ''}>
-          
-          <div class="relative mb-12">
-            ${mpesaStatus === 'sending' || mpesaStatus === 'pending' ? `
-              <div class="w-12 h-12 bg-white rounded-full border-4 border-white/20 border-t-white animate-spin"></div>
-              <div class="absolute inset-0 flex items-center justify-center">
-                <i data-lucide="smartphone" class="w-12 h-12 animate-bounce"></i>
-              </div>
-            ` : ''}
-
-            ${mpesaStatus === 'success' ? `
-              <div class="w-32 h-32 rounded-full bg-white flex items-center justify-center text-[#00FF00] scale-in-center shadow-2xl">
-                <i data-lucide="check" class="w-16 h-16 stroke-[4]"></i>
-              </div>
-            ` : ''}
-
-            ${mpesaStatus === 'error' ? `
-              <div class="w-32 h-32 rounded-full bg-white flex items-center justify-center text-[#FF0000] scale-in-center shadow-2xl">
-                <i data-lucide="x" class="w-16 h-16 stroke-[4]"></i>
-              </div>
-            ` : ''}
-          </div>
-
-          <h2 class="text-4xl font-black mb-4 tracking-tight">
-            ${mpesaStatus === 'pending' || mpesaStatus === 'sending' ? 'Waiting for PIN' : ''}
-            ${mpesaStatus === 'processing' || mpesaStatus === 'verifying' ? 'Verifying...' : ''}
-            ${mpesaStatus === 'success' ? 'Settled!' : ''}
-            ${mpesaStatus === 'error' ? 'Payment Failed' : ''}
-          </h2>
-
-          <p class="text-lg font-bold opacity-80 max-w-sm mx-auto">
-            ${mpesaStatus === 'pending' || mpesaStatus === 'sending' ? `M-Pesa push sent to <span class="underline">${mpesaPhone}</span>. Confirm the prompt on your phone.` : ''}
-            ${mpesaStatus === 'processing' || mpesaStatus === 'verifying' ? 'Your payment is being verified by Safaricom. Please wait...' : ''}
-            ${mpesaStatus === 'success' ? `Excellent! Payment confirmed.<br><span class="text-xs opacity-60 font-mono mt-2 block">REF: ${window.lastPaymentReceipt || 'Captured'}</span>` : ''}
-            ${mpesaStatus === 'error' ? mpesaError : ''}
-          </p>
-
-          ${mpesaStatus === 'pending' || mpesaStatus === 'processing' ? `
-            <p class="mt-8 text-[10px] font-black uppercase tracking-widest opacity-50">Click anywhere to cancel</p>
-          ` : ''}
-
-          ${mpesaStatus === 'error' ? `
-            <button onclick="window.closeMpesaError()" class="mt-12 px-8 py-4 bg-white text-[#FF0000] rounded-2xl font-black uppercase tracking-widest hover:bg-gray-100 transition-all active:scale-95 shadow-xl">
-              Retry Payment
-            </button>
-          ` : ''}
-
-          ${mpesaStatus === 'sending' || mpesaStatus === 'pending' ? `
-            <div class="mt-12 flex gap-2">
-               <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-               <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-               <div class="w-2 h-2 bg-white rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
-            </div>
-          ` : ''}
-        </div>
-      ` : ''}
     </div>
   `;
 
@@ -502,131 +404,17 @@ window.submitOrder = async (targetStatus = 'PAID') => {
     paymentMethod,
   };
 
-  if (targetStatus === 'PAID' && paymentMethod === 'M-Pesa') {
-    pendingOrderData = billData;
-    isMpesaPromptOpen = true;
-    reRender();
-    return;
-  }
-
   try {
-    const newBill = await store.createBill(billData);
-    
-    if (targetStatus === 'PAID') {
-      paymentStatus = 'success';
-      reRender();
-      setTimeout(() => {
-        paymentStatus = 'idle';
-        reRender();
-      }, 2000);
-    }
+    await store.createBill(billData);
     store.clearCart();
+    // Optimistic UI in billingStore already triggered a notify() — no extra reRender needed.
   } catch (err) {
     console.error('Submit Order Error:', err);
-    paymentStatus = 'error';
     reRender();
-    setTimeout(() => { paymentStatus = 'idle'; reRender(); }, 3000);
   }
-
-  reRender();
 };
 
-window.closeMpesaPrompt = () => {
-  isMpesaPromptOpen = false;
-  pendingOrderData = null;
-  reRender();
-};
 
-window.triggerStkPush = () => {
-  if (store.isPaymentProcessing) return;
-  const phone = document.getElementById('mpesa-phone-input')?.value || mpesaPhone;
-  if (!phone || phone.length < 10) {
-    mpesaError = "Please enter a valid M-Pesa phone number";
-    mpesaStatus = 'error';
-    reRender();
-    return;
-  }
-  
-  mpesaPhone = phone;
-  isMpesaPromptOpen = false;
-  mpesaStatus = 'pending'; // Transition IMMEDIATELY to waiting screen
-  store.isPaymentProcessing = true;
-  reRender();
-
-  (async () => {
-    if (pendingOrderData) {
-      try {
-        const newBill = await store.createBill({
-          ...pendingOrderData,
-          paymentMethod: 'M-Pesa',
-          status: 'PENDING'
-        });
-
-        if (newBill && newBill._id) {
-          const res = await store.triggerStkPushApi(phone, pendingOrderData.total, newBill._id);
-          
-          if (res.ok) {
-            // Background polling starts immediately
-            const pollResult = await store.pollBillStatus(newBill.id || newBill._id, (status) => {
-              if (status === 'PAID' || status === 'CONFIRMED' || status === 'verifying') {
-                mpesaStatus = status === 'verifying' ? 'verifying' : 'success';
-                reRender();
-              }
-            });
-            
-            if (pollResult.success) {
-              window.lastPaymentReceipt = pollResult.bill?.mpesaReceiptNumber;
-              store.clearCart();
-              mpesaStatus = 'success';
-              reRender();
-              setTimeout(() => {
-                mpesaStatus = null;
-                window.lastPaymentReceipt = null;
-                reRender();
-              }, 4000); // Keep success message longer as requested
-            } else if (pollResult.message !== 'Polling cancelled.') {
-              mpesaStatus = 'error';
-              mpesaError = pollResult.message;
-              reRender();
-            }
-          } else {
-            mpesaStatus = 'error';
-            mpesaError = res.data?.message || 'Daraja API Connection Error';
-            reRender();
-          }
-        } else {
-          mpesaStatus = 'error';
-          mpesaError = "Failed to sync transaction data.";
-          reRender();
-        }
-      } catch (err) {
-        const msg = err.response?.data?.message || err.message;
-        const details = err.response?.data?.receivedBody;
-        console.error('M-Pesa Init Error Details:', msg, details);
-        mpesaStatus = 'error';
-        mpesaError = msg || "System error during initialization.";
-        reRender();
-      } finally {
-        store.isPaymentProcessing = false;
-        reRender();
-      }
-    }
-    pendingOrderData = null;
-  })();
-};
-
-window.closeMpesaError = () => {
-  mpesaStatus = null;
-  reRender();
-};
-
-window.cancelMpesa = () => {
-  if (pendingOrderData && (pendingOrderData.billId || pendingOrderData._id)) {
-      store.stopPolling(pendingOrderData.billId || pendingOrderData._id);
-  }
-  mpesaStatus = null;
-  reRender();
-};
 
 window.openAddItemModal = () => {
   editingItem = null;

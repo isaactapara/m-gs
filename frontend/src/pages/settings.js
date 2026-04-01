@@ -27,7 +27,7 @@ function renderSettings() {
   const html = `
     <div class="h-[calc(100vh-80px)] -m-4 md:-m-8 flex flex-col overflow-y-auto bg-gray-50/10 dark:bg-black p-4 md:p-8">
       <div class="max-w-6xl mx-auto w-full space-y-8">
-        <div class="flex flex-col items-center select-none w-full border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'} pb-8">
+        <div class="flex flex-col items-center select-none w-full border-b ${isDarkMode ? 'border-[#111]' : 'border-gray-100'} pb-8">
           <span class="text-[10px] font-black uppercase tracking-[0.8em] text-gray-400 mb-1 ml-[0.8em]">THE</span>
           <h1 class="text-6xl font-[900] text-[#FF0000] tracking-tighter leading-[0.85] mb-2 drop-shadow-sm">${store.sanitize(settings.restaurantName)}</h1>
           <span class="text-[12px] font-black uppercase tracking-[0.5em] ${isDarkMode ? 'text-white' : 'text-gray-900'} ml-[0.5em]">RESTAURANT</span>
@@ -35,7 +35,7 @@ function renderSettings() {
 
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
           <!-- Change Password Form -->
-          <form id="change-password-form" class="p-8 rounded-[40px] border shadow-sm space-y-6 ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'}">
+          <form id="change-password-form" class="p-8 rounded-[40px] border shadow-sm space-y-6 ${isDarkMode ? 'bg-black border-[#111]' : 'bg-white border-gray-100'}">
             <div>
               <div class="w-12 h-12 bg-blue-100 text-blue-600 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
                 <i data-lucide="lock" class="w-6 h-6"></i>
@@ -47,11 +47,11 @@ function renderSettings() {
             <div class="space-y-4">
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Current Password</label>
-                <input id="currentPassword" type="password" required class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-gray-900' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <input id="currentPassword" type="password" required class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New Password</label>
-                <input id="newPassword" type="password" required minlength="8" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-gray-900' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <input id="newPassword" type="password" required minlength="8" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
             </div>
 
@@ -62,7 +62,7 @@ function renderSettings() {
             </button>
           </form>
 
-          <form id="create-cashier-form" class="p-8 rounded-[40px] border shadow-sm space-y-6 flex flex-col ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'}">
+          <form id="create-cashier-form" class="p-8 rounded-[40px] border shadow-sm space-y-6 flex flex-col ${isDarkMode ? 'bg-black border-[#111]' : 'bg-white border-gray-100'}">
             <div>
               <div class="w-12 h-12 bg-red-100 text-[#FF0000] dark:bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
                 <i data-lucide="user-plus" class="w-6 h-6"></i>
@@ -74,11 +74,11 @@ function renderSettings() {
             <div class="space-y-4">
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Username</label>
-                <input id="newUsername" required placeholder="e.g. john" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-gray-900' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <input id="newUsername" required placeholder="e.g. john" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Password (min 8 chars)</label>
-                <input id="newPasswordInput" required type="password" minlength="8" placeholder="Enter secure password" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-gray-900' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <input id="newPasswordInput" required type="password" minlength="8" placeholder="Enter secure password" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
             </div>
 
@@ -89,14 +89,14 @@ function renderSettings() {
             </button>
           </form>
 
-          <div class="rounded-[40px] border shadow-sm flex flex-col overflow-hidden ${isDarkMode ? 'bg-black border-gray-900' : 'bg-white border-gray-100'}">
-            <div class="p-8 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}">
+          <div class="rounded-[40px] border shadow-sm flex flex-col overflow-hidden ${isDarkMode ? 'bg-black border-[#111]' : 'bg-white border-gray-100'}">
+            <div class="p-8 border-b ${isDarkMode ? 'border-[#111]' : 'border-gray-100'}">
               <h4 class="font-black text-xl tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}">Active Accounts</h4>
               <p class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Manage system access</p>
             </div>
             <div class="overflow-y-auto flex-1 p-8 space-y-4 styled-scrollbar max-h-[500px]">
               ${store.users.map((user) => `
-                <div class="p-5 rounded-3xl border flex items-center justify-between transition-all hover:border-gray-300 dark:hover:border-gray-700 ${isDarkMode ? 'bg-black border-gray-900' : 'bg-gray-50 border-gray-200'} ${!user.isActive ? 'opacity-60 saturate-50' : ''}">
+                <div class="p-5 rounded-3xl border flex items-center justify-between transition-all hover:border-gray-300 dark:hover:border-zinc-800 ${isDarkMode ? 'bg-black border-[#111]' : 'bg-gray-50 border-gray-200'} ${!user.isActive ? 'opacity-60 saturate-50' : ''}">
                   <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black uppercase text-white shadow-md ${user.role === 'owner' ? 'bg-blue-500' : 'bg-gray-400'}">
                       ${store.sanitize(user.username[0])}
@@ -104,7 +104,7 @@ function renderSettings() {
                     <div>
                       <p class="font-black text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'} capitalize">${store.sanitize(user.username)}</p>
                       <div class="flex items-center gap-2 mt-1">
-                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${user.role === 'owner' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}">
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${user.role === 'owner' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-200 text-gray-600 dark:bg-[#111] dark:text-gray-400 border dark:border-white/5'}">
                           ${store.sanitize(user.role)}
                         </span>
                         ${!user.isActive ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-600 animate-pulse">Suspended</span>' : ''}
