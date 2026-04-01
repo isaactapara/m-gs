@@ -1,28 +1,37 @@
 export const resolveApiBaseUrl = (baseUrl) => {
+  // 1. Handle missing, empty, or invalid inputs gracefully
   if (!baseUrl || typeof baseUrl !== 'string' || baseUrl.trim() === '') {
     return '/api';
   }
 
   const trimmedBase = baseUrl.trim();
 
+  // 2. Absolute URL validation and transformation
   if (trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://')) {
     try {
       const url = new URL(trimmedBase);
+      
+      // Clean trailing slashes from the path
       let path = url.pathname.replace(/\/+$/, '');
       
-      if (!path.includes('/api')) {
+      // Prevent duplicate /api/api and append if missing
+      if (!path.endsWith('/api')) {
         path += '/api';
       }
       
       url.pathname = path;
+      
+      // Return full validated URL without a trailing slash
       return url.toString().replace(/\/+$/, '');
     } catch (error) {
-      return '/api'; 
+      console.warn('Invalid absolute URL format detected:', trimmedBase);
+      return '/api'; // Safe fallback for malformed URLs
     }
   }
 
+  // 3. Relative URL handling
   let relativePath = trimmedBase.replace(/\/+$/, '');
-  if (!relativePath.includes('/api')) {
+  if (!relativePath.endsWith('/api')) {
     relativePath += '/api';
   }
   
