@@ -94,7 +94,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.create({
     data: {
-      username: username,
+      username: normalizedUsername,
       password: hashedPassword,
       role: req.body.role || 'cashier',
     },
