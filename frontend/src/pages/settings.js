@@ -40,25 +40,25 @@ function renderSettings() {
               <div class="w-12 h-12 bg-blue-100 text-blue-600 dark:bg-blue-500/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
                 <i data-lucide="lock" class="w-6 h-6"></i>
               </div>
-              <h4 class="font-black text-xl tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}">Security & Password</h4>
-              <p class="text-xs font-bold text-gray-400">Update your account password (at least 8 chars).</p>
+              <h4 class="font-black text-xl tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}">Security & PIN</h4>
+              <p class="text-xs font-bold text-gray-400">Update your account PIN (exactly 6 digits).</p>
             </div>
 
             <div class="space-y-4">
               <div class="space-y-2">
-                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Current Password</label>
-                <input id="currentPassword" type="password" required class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Current PIN</label>
+                <input id="currentPassword" type="password" required maxlength="6" inputmode="numeric" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
               <div class="space-y-2">
-                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New Password</label>
-                <input id="newPassword" type="password" required minlength="8" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New PIN</label>
+                <input id="newPassword" type="password" required minlength="6" maxlength="6" inputmode="numeric" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
             </div>
 
             <div id="password-feedback" class="hidden text-xs font-bold p-3 rounded-xl"></div>
 
             <button type="submit" class="w-full py-4 rounded-[20px] bg-blue-600 text-white font-black uppercase tracking-widest shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
-              Update Password
+              Update PIN
             </button>
           </form>
 
@@ -77,8 +77,8 @@ function renderSettings() {
                 <input id="newUsername" required placeholder="e.g. john" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
               <div class="space-y-2">
-                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Password (min 8 chars)</label>
-                <input id="newPasswordInput" required type="password" minlength="8" placeholder="Enter secure password" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">PIN (exactly 6 digits)</label>
+                <input id="newPasswordInput" required type="password" minlength="6" maxlength="6" inputmode="numeric" placeholder="Enter 6-digit PIN" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
               </div>
             </div>
 
@@ -201,7 +201,7 @@ function attachListeners() {
 
       try {
         await store.apiClient.patch('/auth/change-password', { currentPassword, newPassword });
-        passwordFeedback.textContent = 'Password updated successfully!';
+        passwordFeedback.textContent = 'PIN updated successfully!';
         passwordFeedback.className = 'text-xs font-bold p-3 rounded-xl bg-green-50 text-green-600 dark:bg-green-500/10 block';
         document.getElementById('currentPassword').value = '';
         document.getElementById('newPassword').value = '';

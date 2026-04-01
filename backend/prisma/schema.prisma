@@ -14,13 +14,17 @@ enum UserRole {
 }
 
 enum PaymentMethod {
-  CASH @map("Cash")
+  MPESA @map("M-Pesa")
+  CASH  @map("Cash")
 }
 
 enum PaymentStatus {
-  UNPAID
+  PENDING
+  CONFIRMED
   PAID
+  FAILED
   CANCELLED
+  UNPAID
 }
 
 enum AuditStatus {
