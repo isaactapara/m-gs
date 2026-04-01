@@ -1,12 +1,41 @@
-const resolveApiBaseUrl = () => {
-  let baseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
-
-  if (!baseUrl) {
+export const resolveApiBaseUrl = (baseUrl) => {
+  // 1. Handle missing, empty, or invalid inputs gracefully
+  if (!baseUrl || typeof baseUrl !== 'string' || baseUrl.trim() === '') {
     return '/api';
   }
 
-  // Ensure trailing slash is removed
-  return baseUrl.replace(/\/+$/, '');
+  const trimmedBase = baseUrl.trim();
+
+  // 2. Absolute URL validation and transformation
+  if (trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://')) {
+    try {
+      const url = new URL(trimmedBase);
+      
+      // Clean trailing slashes from the path
+      let path = url.pathname.replace(/\/+$/, '');
+      
+      // Prevent duplicate /api/api and append if missing
+      if (!path.endsWith('/api')) {
+        path += '/api';
+      }
+      
+      url.pathname = path;
+      
+      // Return full validated URL without a trailing slash
+      return url.toString().replace(/\/+$/, '');
+    } catch (error) {
+      console.warn('Invalid absolute URL format detected:', trimmedBase);
+      return '/api'; // Safe fallback for malformed URLs
+    }
+  }
+
+  // 3. Relative URL handling
+  let relativePath = trimmedBase.replace(/\/+$/, '');
+  if (!relativePath.endsWith('/api')) {
+    relativePath += '/api';
+  }
+  
+  return relativePath;
 };
 
 const isFormData = (value) => typeof FormData !== 'undefined' && value instanceof FormData;
@@ -14,7 +43,7 @@ const isFormData = (value) => typeof FormData !== 'undefined' && value instanceo
 export class ApiClient {
   constructor(rootStore) {
     this.rootStore = rootStore;
-    this.baseUrl = resolveApiBaseUrl();
+    this.baseUrl = resolveApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
   }
 
   buildUrl(path) {
