@@ -7,7 +7,19 @@ const resolveApiBaseUrl = () => {
     baseUrl = isDev ? '/api' : '/api'; // Relative works best in both for consistency with proxy/nginx
   }
 
-  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  // Ensure trailing slash is removed
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
+  }
+
+  // FAIL-SAFE: If it's a production URL (starts with http) and MISSING the /api suffix, append it.
+  // This ensures that even if VITE_API_BASE_URL is set to "https://api.mandgs.online", 
+  // it correctly becomes "https://api.mandgs.online/api".
+  if (baseUrl.startsWith('http') && !baseUrl.endsWith('/api')) {
+    baseUrl = `${baseUrl}/api`;
+  }
+
+  return baseUrl;
 };
 
 const isFormData = (value) => typeof FormData !== 'undefined' && value instanceof FormData;
