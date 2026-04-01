@@ -3,13 +3,26 @@
  * for the frontend to consume seamlessly.
  */
 const toMongoJSON = (prismaPayload) => {
-  if (!prismaPayload) return null;
+  if (prismaPayload === null || prismaPayload === undefined) return prismaPayload;
 
   if (Array.isArray(prismaPayload)) {
     return prismaPayload.map(toMongoJSON);
   }
 
-  // Shallow clone
+  // If it's not an object (primitive) or it's a Date, return as-is
+  if (typeof prismaPayload !== 'object' || prismaPayload instanceof Date) {
+    return prismaPayload;
+  }
+
+  // Handle Prisma Decimal specifically (it identifies as an object)
+  const isDecimal = prismaPayload.constructor && prismaPayload.constructor.name === 'Decimal';
+  const hasDecimalMethods = typeof prismaPayload.toFixed === 'function' && typeof prismaPayload.toNumber === 'function';
+  
+  if (isDecimal || hasDecimalMethods) {
+    return Number(prismaPayload.toString());
+  }
+
+  // Shallow clone for object mapping
   const mapped = { ...prismaPayload };
 
   // Map 'id' to '_id'

@@ -14,7 +14,10 @@ const generateToken = (id) => jwt.sign({ id }, env.jwtSecret, { expiresIn: env.j
 const safeEntityId = (id) => id ? String(id).substring(0, 24) : null;
 
 const loginUser = asyncHandler(async (req, res) => {
-  const username = String(req.body.username).trim();
+  const username = String(req.body.username || '').trim();
+  if (!username) {
+    throw new AppError('Username is required', 400, 'USERNAME_REQUIRED');
+  }
   const user = await prisma.user.findFirst({ 
     where: { 
       username: {
@@ -82,7 +85,10 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-  const normalizedUsername = String(req.body.username).toLowerCase().trim();
+  const normalizedUsername = String(req.body.username || '').toLowerCase().trim();
+  if (!normalizedUsername) {
+    throw new AppError('Username is required', 400, 'USERNAME_REQUIRED');
+  }
   const userExists = await prisma.user.findUnique({ where: { username: normalizedUsername } });
 
   if (userExists) {
