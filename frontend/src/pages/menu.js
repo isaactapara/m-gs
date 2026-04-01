@@ -236,7 +236,7 @@ function renderMenu() {
                   paymentStatus === 'error' ? "bg-amber-500 shadow-amber-500/40" : 
                   "bg-[#FF0000] shadow-red-500/40 hover:bg-red-600 hover:-translate-y-1"
                 } shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none">
-                  ${paymentStatus === 'success' ? `<i data-lucide="check-circle-2" class="w-5 h-5"></i> PAID` : 
+                  ${paymentStatus === 'success' ? `<i data-lucide="check-circle" class="w-5 h-5"></i> PAID` : 
                     paymentStatus === 'error' ? `<i data-lucide="alert-circle" class="w-5 h-5"></i> FAILED` : 
                     `<i data-lucide="banknote" class="w-5 h-5"></i> PAY NOW`}
                 </button>
@@ -305,7 +305,7 @@ function renderMenu() {
               type="submit"
               class="w-full mt-10 py-5 rounded-[24px] bg-[#FF0000] text-white font-black uppercase tracking-widest shadow-xl shadow-red-500/30 hover:bg-red-600 transition-all flex items-center justify-center gap-2"
             >
-              <i data-lucide="check-circle-2" class="w-5 h-5"></i> Save Changes
+              <i data-lucide="check-circle" class="w-5 h-5"></i> Save Changes
             </button>
           </form>
         </div>

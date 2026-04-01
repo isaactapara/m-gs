@@ -131,7 +131,7 @@ function renderHome() {
                   isSuccess ? "bg-green-500 shadow-green-500/40" : 
                   "bg-[#FF0000] shadow-red-500/40 hover:bg-red-600 hover:-translate-y-1"
                 } shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-none">
-                  ${isSuccess ? `<i data-lucide="check-circle-2" class="w-5 h-5"></i> PAID` : 
+                  ${isSuccess ? `<i data-lucide="check-circle" class="w-5 h-5"></i> PAID` : 
                     `<i data-lucide="banknote" class="w-5 h-5"></i> PAY NOW`}
                 </button>
               </div>
@@ -167,7 +167,7 @@ function renderHome() {
                     </td>
                     <td class="py-4 text-xs font-medium max-w-[150px] truncate">${bill.items.map(i => i.name).join(', ')}</td>
                     <td class="py-4 text-right">
-                       <button onclick="window.promptPaymentMethod('${bill.id}')" class="text-[9px] px-3 py-1.5 rounded-full font-black uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 transition-colors shadow-sm border border-amber-200 dark:border-amber-800/50 flex items-center justify-center gap-1 w-full justify-end group">
+                       <button onclick="window.promptPaymentMethod('${bill.id}')" class="text-[9px] px-3 py-1.5 rounded-full font-black uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 transition-colors shadow-sm border border-amber-200 dark:border-amber-800/50 flex items-center justify-end gap-1 w-full group">
                          COLLECT <i data-lucide="arrow-right" class="w-3 h-3 group-hover:translate-x-1 transition-transform"></i>
                        </button>
                     </td>
@@ -190,7 +190,7 @@ function renderHome() {
         <!-- PAID BILLS -->
         <div class="flex-1">
           <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-black tracking-tight text-green-500 flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5"></i> Settled Bills</h3>
+            <h3 class="text-lg font-black tracking-tight text-green-500 flex items-center gap-2"><i data-lucide="check-circle" class="w-5 h-5"></i> Settled Bills</h3>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left">

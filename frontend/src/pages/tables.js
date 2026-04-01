@@ -32,7 +32,7 @@ function renderTables() {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'OCCUPIED': return 'users';
-      case 'FREE': return 'check-circle-2';
+      case 'FREE': return 'check-circle';
       case 'PENDING': return 'clock';
       default: return 'circle';
     }
@@ -166,7 +166,7 @@ function renderTables() {
                   <div class="w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
                     selectedTable.status === 'FREE' ? "bg-green-500 text-white shadow-md shadow-green-500/30" : "bg-white dark:bg-gray-700 text-green-500 shadow-sm"
                   }">
-                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                    <i data-lucide="check-circle" class="w-6 h-6"></i>
                   </div>
                   <div>
                      <span class="block text-xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}">Free Table</span>

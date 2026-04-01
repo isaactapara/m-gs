@@ -8,24 +8,19 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-
 enum UserRole {
   owner
   cashier
 }
 
 enum PaymentMethod {
-  MPESA @map("M-Pesa")
-  CASH  @map("Cash")
+  CASH @map("Cash")
 }
 
 enum PaymentStatus {
-  PENDING
-  CONFIRMED
+  UNPAID
   PAID
-  FAILED
   CANCELLED
-  PARTIAL_PAYMENT_FLAGGED
 }
 
 enum AuditStatus {
@@ -40,10 +35,20 @@ enum TableStatus {
   PENDING
 }
 
+enum MenuCategory {
+  MAINS           @map("Mains")
+  SNACKS          @map("Snacks")
+  HOT_BEVERAGES   @map("Hot Beverages")
+  SIDES           @map("Sides")
+  DRINKS          @map("Drinks")
+  STAPLES         @map("Staples")
+  VEGETABLES      @map("Vegetables")
+}
+
 model User {
   id           String   @id @default(uuid())
   username     String   @unique @db.VarChar(40)
-  password     String   @map("password") // Renamed from pin
+  password     String   @map("password")
   role         UserRole @default(cashier)
   isActive     Boolean  @default(true) @map("is_active")
   lastActiveAt DateTime @default(now()) @map("last_active_at")
@@ -57,18 +62,6 @@ model User {
   @@index([lastActiveAt])
   @@index([isActive])
   @@map("users")
-}
-
-
-
-enum MenuCategory {
-  MAINS           @map("Mains")
-  SNACKS          @map("Snacks")
-  HOT_BEVERAGES   @map("Hot Beverages")
-  SIDES           @map("Sides")
-  DRINKS          @map("Drinks")
-  STAPLES         @map("Staples")
-  VEGETABLES      @map("Vegetables")
 }
 
 model MenuItem {
@@ -88,43 +81,22 @@ model MenuItem {
   @@map("menu_items")
 }
 
-
 model Bill {
-  id                          String        @id @default(uuid())
-  billNumber                  String        @unique @map("bill_number")
-  total                       Decimal       @db.Decimal(12, 2)
-  paymentMethod               PaymentMethod @map("payment_method")
-  status                      PaymentStatus @default(PENDING)
-  mpesaReceiptNumber          String?       @unique @map("mpesa_receipt_number") @db.VarChar(64)
-  paymentPhone                String?       @map("payment_phone") @db.VarChar(20)
-  failureReason               String?       @map("failure_reason")
-  amountPaid                  Decimal?      @map("amount_paid") @db.Decimal(12, 2)
-  amountDifference            Decimal       @default(0) @map("amount_difference") @db.Decimal(12, 2)
-  mpesaTransactionDate        DateTime?     @map("mpesa_transaction_date")
-  cashier                     String        @db.VarChar(40)
-  cashierId                   String        @map("cashier_id")
-  checkoutRequestId           String?       @unique @map("checkout_request_id") @db.VarChar(120)
-  merchantRequestId           String?       @unique @map("merchant_request_id") @db.VarChar(120)
-  callbackProcessedAt         DateTime?     @map("callback_processed_at")
-  callbackProcessingStartedAt DateTime?     @map("callback_processing_started_at")
-  lastCallbackReceivedAt      DateTime?     @map("last_callback_received_at")
-  lastCallbackResultCode      Int?          @map("last_callback_result_code")
-  lastPaymentAttemptAt        DateTime?     @map("last_payment_attempt_at")
-  paymentLockExpiresAt        DateTime?     @map("payment_lock_expires_at")
-  paymentAttempts             Int           @default(0) @map("payment_attempts")
-  auditFlags                  String[]      @default([])
-  lastStatusQueryAt           DateTime?     @map("last_status_query_at")
-  createdAt                   DateTime      @default(now()) @map("created_at")
-  updatedAt                   DateTime      @updatedAt @map("updated_at")
+  id            String        @id @default(uuid())
+  billNumber    String        @unique @map("bill_number")
+  total         Decimal       @db.Decimal(12, 2)
+  paymentMethod PaymentMethod @default(CASH) @map("payment_method")
+  status        PaymentStatus @default(UNPAID)
+  cashier       String        @db.VarChar(40)
+  cashierId     String        @map("cashier_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   cashierUser User     @relation(fields: [cashierId], references: [id], onDelete: Restrict)
   items       BillItem[]
 
   @@index([createdAt, cashierId])
   @@index([status, updatedAt])
-  @@index([status, checkoutRequestId, updatedAt])
-  @@index([paymentLockExpiresAt])
-  @@index([callbackProcessingStartedAt])
   @@map("bills")
 }
 

@@ -15,7 +15,6 @@ A production-grade Point-of-Sale system built for restaurant operations in the K
 | Frontend | Vite, Vanilla JS, TailwindCSS | Multi-page SPA with reactive state management |
 | Backend | Node.js, Express 5 | RESTful API with domain-driven service architecture |
 | Database | PostgreSQL (Supabase) | Relational persistence via Prisma ORM |
-| Payments | Safaricom Daraja API | STK Push, callback processing, automated reconciliation |
 
 ---
 
@@ -34,7 +33,6 @@ backend/
       auth/                    # User authentication (login, register, JWT)
       billing/                 # Bill creation, status management
       menu/                    # Menu item CRUD operations
-      payments/                # M-Pesa STK Push, callbacks, reconciliation engine
       reports/                 # Revenue analytics and trend reporting
       sharedState/             # Restaurant settings, floor plan management
       audit/                   # System-wide audit trail logging
@@ -55,7 +53,6 @@ frontend/
 
 - Node.js >= 18.x
 - PostgreSQL 15+ (or a Supabase project)
-- Safaricom Daraja API sandbox credentials (for M-Pesa integration)
 
 ---
 
@@ -74,12 +71,6 @@ cp backend/.env.example backend/.env
 | `DATABASE_URL` | PostgreSQL connection string |
 | `DIRECT_URL` | Direct database connection (required by Prisma) |
 | `JWT_SECRET` | Minimum 10-character secret for token signing |
-| `MPESA_CONSUMER_KEY` | Daraja API consumer key |
-| `MPESA_CONSUMER_SECRET` | Daraja API consumer secret |
-| `MPESA_PASSKEY` | Lipa Na M-Pesa passkey |
-| `MPESA_SHORTCODE` | Business shortcode |
-| `MPESA_CALLBACK_URL` | Publicly accessible callback endpoint |
-| `MPESA_CALLBACK_SECRET` | Shared secret for callback authorization |
 
 ---
 
@@ -138,9 +129,6 @@ npm run prisma:validate    # Validate schema syntax
 | POST | `/api/menu` | Owner | Create a menu item |
 | GET | `/api/bills` | JWT | List bills (filtered by role) |
 | POST | `/api/bills` | JWT | Create a new bill |
-| POST | `/api/payments/initiate` | JWT | Initiate M-Pesa STK Push |
-| POST | `/api/payments/status` | JWT | Poll payment status |
-| POST | `/api/payments/callback` | M-Pesa | Process Daraja callback |
 | GET | `/api/settings` | JWT | Retrieve restaurant settings |
 | PATCH | `/api/settings` | Owner | Update restaurant settings |
 | GET | `/api/tables` | JWT | Retrieve floor plan |
@@ -152,11 +140,9 @@ npm run prisma:validate    # Validate schema syntax
 
 ## Payment Flow
 
-1. Cashier initiates payment via the frontend billing interface.
-2. Backend acquires an atomic database lock on the bill to prevent duplicate requests.
-3. An STK Push is dispatched to the customer's phone via the Daraja API.
-4. Safaricom posts the transaction result to the callback endpoint.
-5. The reconciliation engine runs on a configurable interval to resolve any missed callbacks.
+1. Cashier creates bills through the billing interface.
+2. Bills can be marked as paid with cash payment method.
+3. All transactions are logged in the audit trail for reporting.
 
 ---
 
