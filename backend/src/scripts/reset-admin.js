@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 async function resetAdmin() {
   const username = 'admin';
-  const plainPassword = '1234';
+  const plainPassword = '123456';
   
   console.log(`🚀 Resetting credentials for user: ${username}...`);
   

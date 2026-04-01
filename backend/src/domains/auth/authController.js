@@ -14,11 +14,11 @@ const generateToken = (id) => jwt.sign({ id }, env.jwtSecret, { expiresIn: env.j
 const safeEntityId = (id) => id ? String(id).substring(0, 24) : null;
 
 const loginUser = asyncHandler(async (req, res) => {
-  const normalizedUsername = String(req.body.username).toLowerCase().trim();
+  const username = String(req.body.username).trim();
   const user = await prisma.user.findFirst({ 
     where: { 
       username: {
-        equals: normalizedUsername,
+        equals: username,
         mode: 'insensitive'
       }
     } 
@@ -33,13 +33,13 @@ const loginUser = asyncHandler(async (req, res) => {
       req,
       action: 'auth.login',
       status: 'FAILED',
-      metadata: { username: normalizedUsername },
-      actor: { actorId: null, actorUsername: normalizedUsername, actorRole: 'anonymous' },
+      metadata: { username: username },
+      actor: { actorId: null, actorUsername: username, actorRole: 'anonymous' },
     }).catch(err => logger.error('login_audit_failed', { error: err.message }));
 
     logger.security('auth_login_failed', {
       requestId: req.requestId,
-      username: normalizedUsername,
+      username: username,
       ip: req.ip,
     });
 
@@ -94,7 +94,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const user = await prisma.user.create({
     data: {
-      username: normalizedUsername,
+      username: username,
       password: hashedPassword,
       role: req.body.role || 'cashier',
     },

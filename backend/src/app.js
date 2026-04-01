@@ -27,29 +27,31 @@ const createApp = () => {
   app.use(helmet());
   app.use(cors({
     origin: (origin, callback) => {
-      // Allow non-browser requests without Origin header (curl, server-to-server).
+      // 1. Allow non-browser requests (e.g. server-to-server)
       if (!origin) {
-        callback(null, true);
-        return;
+        return callback(null, true);
       }
 
-      // Exact match for configured origins
+      // 2. Exact match for configured allowed origins
       if (allowedOrigins.has(origin)) {
-        callback(null, true);
-        return;
+        return callback(null, true);
       }
 
-      // Robust development check: allow localhost and 127.0.0.1 on any port
+      // 3. Dev-mode relaxation: Allow local traffic on any port
       if (env.nodeEnv === 'development') {
-        const url = new URL(origin);
-        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
-          callback(null, true);
-          return;
+        try {
+          const url = new URL(origin);
+          if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+            return callback(null, true);
+          }
+        } catch (err) {
+          logger.error('cors_origin_parse_error', { origin, error: err.message });
         }
       }
 
+      // 4. Reject and log violation
       logger.security('cors_origin_rejected', { origin });
-      callback(new AppError(`Origin ${origin} not allowed by CORS policy`, 403, 'CORS_ORIGIN_BLOCKED'));
+      return callback(null, false);
     },
     credentials: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

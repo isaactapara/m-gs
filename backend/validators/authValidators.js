@@ -6,13 +6,16 @@ const usernameRule = body('username')
   .isLength({ min: 3, max: 40 })
   .withMessage('Username must be between 3 and 40 characters')
   .matches(/^[a-zA-Z0-9._-]+$/)
-  .withMessage('Username may only contain letters, numbers, dots, underscores, or hyphens');
+  .withMessage('Username may only contain letters, numbers, dots, underscores, or hyphens')
+  .toLowerCase(); // Convert to lowercase for consistency
 
 const passwordRule = body('password')
   .isString()
-  .withMessage('Password is required')
-  .isLength({ min: 8 })
-  .withMessage('Password must be at least 8 characters');
+  .withMessage('PIN is required')
+  .isLength({ min: 6, max: 6 })
+  .withMessage('PIN must be exactly 6 digits')
+  .isNumeric()
+  .withMessage('PIN must contain only numbers');
 
 const loginValidators = [
   usernameRule,
