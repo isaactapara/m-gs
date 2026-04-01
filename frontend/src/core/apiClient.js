@@ -1,30 +1,12 @@
 const resolveApiBaseUrl = () => {
   let baseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
 
-  // 1. Fallback for unconfigured environments (local dev or proxy-managed prod)
   if (!baseUrl) {
     return '/api';
   }
 
-  // 2. Normalize: Remove all trailing slashes
-  baseUrl = baseUrl.replace(/\/+$/, '');
-
-  // 3. Validation for Production (Absolute) URLs
-  if (baseUrl.startsWith('http')) {
-    try {
-      const url = new URL(baseUrl);
-      // If the path doesn't already end with /api, append it.
-      // This protects against https://api.mgs.com becoming https://api.mgs.com/api
-      // while preventing https://api.mgs.com/api from becoming https://api.mgs.com/api/api
-      if (!url.pathname.endsWith('/api')) {
-        baseUrl = `${baseUrl}/api`;
-      }
-    } catch (err) {
-      console.error('Invalid VITE_API_BASE_URL:', baseUrl);
-    }
-  }
-
-  return baseUrl;
+  // Ensure trailing slash is removed
+  return baseUrl.replace(/\/+$/, '');
 };
 
 const isFormData = (value) => typeof FormData !== 'undefined' && value instanceof FormData;
