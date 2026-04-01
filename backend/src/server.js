@@ -12,15 +12,18 @@ const app = createApp();
 const { warmupCache } = require('./domains/menu/menuController');
 
 const startServer = async () => {
-  app.listen(env.port, async () => {
+  const server = app.listen(env.port, () => {
     logger.info('server_started', {
       port: env.port,
       nodeEnv: env.nodeEnv,
     });
 
-    // Background Tasks (Non-blocking)
+    // Background Tasks
     warmupCache();
+  });
 
+  server.on('error', (error) => {
+    logger.error('server_runtime_error', { message: error.message });
   });
 };
 

@@ -6,6 +6,7 @@ const requestContext = require('./middlewares/requestContext');
 const { globalLimiter } = require('./middlewares/rateLimiters');
 const { notFoundHandler, errorHandler } = require('./middlewares/errorHandler');
 const AppError = require('./core/appError');
+const logger = require('./core/logger');
 
 const createApp = () => {
   const app = express();
@@ -30,12 +31,23 @@ const createApp = () => {
         return;
       }
 
+      // Exact match for configured origins
       if (allowedOrigins.has(origin)) {
         callback(null, true);
         return;
       }
 
-      callback(new AppError('Origin not allowed by CORS policy', 403, 'CORS_ORIGIN_BLOCKED'));
+      // Robust development check: allow localhost and 127.0.0.1 on any port
+      if (env.nodeEnv === 'development') {
+        const url = new URL(origin);
+        if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+          callback(null, true);
+          return;
+        }
+      }
+
+      logger.security('cors_origin_rejected', { origin, requestId: req.requestId });
+      callback(new AppError(`Origin ${origin} not allowed by CORS policy`, 403, 'CORS_ORIGIN_BLOCKED'));
     },
     credentials: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

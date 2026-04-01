@@ -65,13 +65,11 @@ const loginUser = asyncHandler(async (req, res) => {
   });
 
   const responseUser = toMongoJSON(user);
-
+  const token = generateToken(user.id);
+  
   res.json({
-    id: user.id,
-    _id: user.id,
-    username: user.username,
-    role: user.role,
-    token: generateToken(user.id),
+    ...responseUser,
+    token,
     expiresIn: env.jwtExpiresIn,
   });
 });
