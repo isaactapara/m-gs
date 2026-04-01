@@ -1,38 +1,29 @@
 export const resolveApiBaseUrl = (baseUrl) => {
-  // 1. Handle missing, empty, or invalid inputs gracefully
   if (!baseUrl || typeof baseUrl !== 'string' || baseUrl.trim() === '') {
     return '/api';
   }
 
   const trimmedBase = baseUrl.trim();
 
-  // 2. Absolute URL validation and transformation
   if (trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://')) {
     try {
       const url = new URL(trimmedBase);
+      let path = url.pathname.replace(/\/+$/, '') || '/';
       
-      // Clean trailing slashes from the path
-      let path = url.pathname.replace(/\/+$/, '');
-      
-      // Prevent duplicate /api/api and append if missing
-      // We use .includes('/api') to avoid /api/v1/api situations
-      if (!path.includes('/api')) {
-        path += '/api';
+      if (!path.endsWith('/api')) {
+        path = path === '/' ? '/api' : path + '/api';
       }
       
       url.pathname = path;
-      
-      // Return full validated URL without a trailing slash
       return url.toString().replace(/\/+$/, '');
     } catch (error) {
       console.warn('Invalid absolute URL format detected:', trimmedBase);
-      return '/api'; // Safe fallback for malformed URLs
+      return '/api';
     }
   }
 
-  // 3. Relative URL handling
   let relativePath = trimmedBase.replace(/\/+$/, '');
-  if (!relativePath.includes('/api')) {
+  if (!relativePath.endsWith('/api')) {
     relativePath += '/api';
   }
   
@@ -97,7 +88,7 @@ export class ApiClient {
         ...rest,
         body: requestBody,
         headers: this.buildHeaders({
-          headers: rest.headers,
+          headers: rest.headers || {},
           body,
         }),
       });
@@ -106,9 +97,7 @@ export class ApiClient {
 
       if (!response.ok) {
         const wrappedError = new Error(
-          data?.error?.message
-          || data?.message
-          || 'Request failed'
+          data?.error?.message || data?.message || 'Request failed'
         );
 
         wrappedError.response = {
@@ -126,9 +115,9 @@ export class ApiClient {
       return data;
     } catch (error) {
       if (
-        error?.name !== 'AbortError'
-        && error?.response?.status === 401
-        && !suppressUnauthorizedHandler
+        error?.name !== 'AbortError' &&
+        error?.response?.status === 401 &&
+        !suppressUnauthorizedHandler
       ) {
         this.rootStore.authStore.handleUnauthorized();
       }
