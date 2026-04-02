@@ -14,32 +14,26 @@ const REPORT_TIMEZONE = 'Africa/Nairobi';
 const getDateRange = (timeframe) => {
   const now = new Date();
 
-  // 1. Get Nairobi's current date components accurately using ISO format (en-CA)
-  const nairobiStr = now.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE }); // Returns "YYYY-MM-DD"
-  const [year, month, day] = nairobiStr.split('-').map(Number);
+  // 1. Get Nairobi's current date in YYYY-MM-DD format (en-CA is the ISO standard)
+  const nairobiDateStr = now.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE });
+  
+  // 2. Create a UTC date representing Nairobi's midnight (00:00:00 EAT)
+  // Since Nairobi is UTC+3, midnight there is 21:00:00 UTC of the previous day.
+  // We use the +03:00 suffix to tell the Date constructor exactly where this midnight sits.
+  let start = new Date(`${nairobiDateStr}T00:00:00+03:00`);
 
-  // 2. Create a Date object representing Midnight in Nairobi
-  // We construct this by telling JS: "Create a date at these coordinates in Nairobi time"
-  const nairobiMidnight = new Date(now.toLocaleString('en-US', { timeZone: REPORT_TIMEZONE }));
-  nairobiMidnight.setHours(0, 0, 0, 0);
-
-  // 3. Adjust for 'week' or 'month' from the Nairobi perspective
+  // 3. Adjust for 'week' or 'month' using UTC methods to keep it stable
   if (timeframe === 'month') {
-    nairobiMidnight.setDate(1);
+    start.setUTCDate(1);
   } else if (timeframe === 'week') {
-    nairobiMidnight.setDate(nairobiMidnight.getDate() - 6);
+    start.setUTCDate(start.getUTCDate() - 6);
   }
 
-  // 4. Convert the local midnight back to a true UTC point in time
-  // This is the CRITICAL STEP: finding the UTC equivalent of that localized midnight string
-  const start = new Date(nairobiMidnight.toLocaleString('en-US', { timeZone: 'UTC' }));
-  
-  // Note: 'end' remains 'now' (UTC) to capture everything up to this exact moment.
   const labels = { day: 'Today', month: 'This Month', week: 'Last 7 Days' };
   
   return { 
     start, 
-    end: now, 
+    end: now, // Current UTC time
     label: labels[timeframe] || labels.week 
   };
 };
