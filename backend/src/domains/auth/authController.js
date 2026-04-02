@@ -142,6 +142,11 @@ const updatePassword = asyncHandler(async (req, res) => {
   }
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  
+  if (!user) {
+    throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+  }
+
   const isMatch = await bcrypt.compare(currentPassword, user.password);
 
   if (!isMatch) {
@@ -149,10 +154,7 @@ const updatePassword = asyncHandler(async (req, res) => {
   }
 
   const updateData = {};
-  
-  if (newPassword) {
-    updateData.password = await bcrypt.hash(newPassword, 10);
-  }
+  updateData.password = await bcrypt.hash(newPassword, 10);
 
   if (username) {
     const normalizedUsername = String(username).toLowerCase().trim();
@@ -170,20 +172,22 @@ const updatePassword = asyncHandler(async (req, res) => {
     data: updateData
   });
 
+  const finalUsername = updateData.username || user.username;
+
   await recordAuditEvent({
     req,
     action: 'user.profile_updated',
     entityType: 'User',
     entityId: req.user.id,
     metadata: { 
-      username: username || user.username,
+      username: finalUsername,
       passwordChanged: !!newPassword
     },
   });
 
   res.json({ 
     message: 'Profile updated successfully',
-    username: updateData.username || user.username
+    username: finalUsername
   });
 });
 
