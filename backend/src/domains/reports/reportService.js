@@ -16,18 +16,23 @@ const getDateRange = (timeframe) => {
 
   // 1. Get Nairobi's current date in YYYY-MM-DD format (en-CA is the ISO standard)
   const nairobiDateStr = now.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE });
-  
-  // 2. Create a UTC date representing Nairobi's midnight (00:00:00 EAT)
-  // Since Nairobi is UTC+3, midnight there is 21:00:00 UTC of the previous day.
-  // We use the +03:00 suffix to tell the Date constructor exactly where this midnight sits.
-  let start = new Date(`${nairobiDateStr}T00:00:00+03:00`);
+  const [year, month, day] = nairobiDateStr.split('-').map(Number);
 
-  // 3. Adjust for 'week' or 'month' using UTC methods to keep it stable
+  // 2. Create a local-perspective date object for calculations
+  let calcDate = new Date(year, month - 1, day); 
+
   if (timeframe === 'month') {
-    start.setUTCDate(1);
+    calcDate.setDate(1);
   } else if (timeframe === 'week') {
-    start.setUTCDate(start.getUTCDate() - 6);
+    calcDate.setDate(calcDate.getDate() - 6);
   }
+
+  // Format the calculated start date back to YYYY-MM-DD
+  const finalStartStr = calcDate.toISOString().slice(0, 10);
+  
+  // 3. Convert the localized date string back to a true UTC point in time
+  // Apply the Nairobi offset (+03:00) so the Date constructor anchors it correctly.
+  const start = new Date(`${finalStartStr}T00:00:00+03:00`);
 
   const labels = { day: 'Today', month: 'This Month', week: 'Last 7 Days' };
   
@@ -89,46 +94,8 @@ const buildTrend = async (timeframe, range, cashierId) => {
     });
   }
 
-  if (timeframe === 'month') {
-    // Divide the month into 4 weekly buckets (0 = Week 1 … 3 = Week 4).
-    // LEAST(..., 3) clamps any day beyond day 28 into the final bucket,
-    // matching the 4-week display structure shown on the frontend.
-    const rows = await prisma.$queryRaw`
-      SELECT
-        LEAST(
-          FLOOR(
-            (
-              (created_at AT TIME ZONE ${REPORT_TIMEZONE})::date
-              - (${range.start} AT TIME ZONE ${REPORT_TIMEZONE})::date
-            ) / 7
-          ),
-          3
-        )::int AS week_num,
-        COALESCE(SUM(total), 0)::float8 AS total_sales
-      FROM bills
-      WHERE
-        created_at >= ${range.start}
-        AND created_at <= ${range.end}
-        AND status IN ('PAID', 'CONFIRMED')
-        AND (${cashierId}::text IS NULL OR cashier_id = ${cashierId}::text)
-      GROUP BY week_num
-      ORDER BY week_num
-    `;
-
-    // O(4) scaffold fill — no financial math.
-    return Array.from({ length: 4 }, (_, week) => {
-      const match = rows.find((r) => Number(r.week_num) === week);
-      return {
-        key: week,
-        label: `Week ${week + 1}`,
-        totalSales: match ? Number(match.total_sales) : 0,
-      };
-    });
-  }
-
-  // Default: 'week' — group by local calendar day.
-  // DATE_TRUNC at the 'day' level in local time prevents bills that
-  // cross midnight UTC from landing in the wrong frontend bucket.
+  // Default: 'week' or 'month' (daily trend)
+  // group by local calendar day.
   const rows = await prisma.$queryRaw`
     SELECT
       (created_at AT TIME ZONE ${REPORT_TIMEZONE})::date AS day,
@@ -147,17 +114,21 @@ const buildTrend = async (timeframe, range, cashierId) => {
   const toIso10 = (d) =>
     d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10);
 
-  const now = new Date();
-
-  // O(7) scaffold fill — no financial math.
-  return Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(now);
-    day.setDate(now.getDate() - (6 - i));
+  // O(7) or O(30) scaffold fill — no financial math.
+  return Array.from({ length: timeframe === 'month' ? 30 : 7 }, (_, i) => {
+    const day = new Date(range.start); // Start from Nairobi midnight
+    day.setUTCDate(day.getUTCDate() + i); // Increment by 1 UTC day at a time
+    
     const isoDate = day.toISOString().slice(0, 10);
     const match = rows.find((r) => toIso10(r.day) === isoDate);
+    
     return {
       key: i,
-      label: day.toLocaleDateString('en-US', { weekday: 'short' }),
+      label: day.toLocaleDateString('en-US', { 
+        weekday: timeframe === 'month' ? undefined : 'short',
+        day: 'numeric',
+        month: 'short'
+      }),
       isoDate,
       totalSales: match ? Number(match.total_sales) : 0,
     };
