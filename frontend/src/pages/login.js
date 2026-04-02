@@ -43,16 +43,14 @@ function renderLogin() {
 
             <div class="space-y-2">
               <label class="block text-xs font-black uppercase tracking-widest ml-1 ${isDarkMode ? "text-gray-400" : "text-gray-400"}">
-                PIN
+                Password
               </label>
               <div class="relative group">
                 <i data-lucide="lock" class="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#FF0000] transition-colors"></i>
                 <input 
                   type="${showPassword ? 'text' : 'password'}" 
                   id="password"
-                  placeholder="Enter 6-digit PIN"
-                  maxlength="6"
-                  inputmode="numeric"
+                  placeholder="Enter password"
                   class="w-full pl-14 pr-14 py-5 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? "bg-black border border-neutral-800 text-white" : "bg-gray-100 border-transparent text-gray-900"}"
                 />
                 <button 
@@ -121,7 +119,7 @@ function attachListeners() {
     if (result.success) {
       window.location.href = '/';
     } else {
-      let message = result.message || 'Invalid username or PIN. Please try again.';
+      let message = result.message || 'Invalid username or password. Please try again.';
       
       // Specifically handle suspended accounts (Fix #5)
       if (result.code === 'ACCOUNT_SUSPENDED') {

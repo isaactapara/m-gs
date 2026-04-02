@@ -138,7 +138,7 @@ const updatePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   if (!newPassword || newPassword.length < 6) {
-    throw new AppError('PIN must be at least 6 digits long', 400, 'WEAK_PASSWORD');
+    throw new AppError('Password must be at least 6 characters long', 400, 'WEAK_PASSWORD');
   }
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });

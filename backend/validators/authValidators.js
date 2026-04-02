@@ -11,11 +11,9 @@ const usernameRule = body('username')
 
 const passwordRule = body('password')
   .isString()
-  .withMessage('PIN is required')
-  .isLength({ min: 6, max: 6 })
-  .withMessage('PIN must be exactly 6 digits')
-  .isNumeric()
-  .withMessage('PIN must contain only numbers');
+  .withMessage('Password is required')
+  .isLength({ min: 6 })
+  .withMessage('Password must be at least 6 characters long');
 
 const loginValidators = [
   usernameRule,
