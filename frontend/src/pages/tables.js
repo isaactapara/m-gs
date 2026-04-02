@@ -344,10 +344,12 @@ function attachDragListeners() {
     }
   };
 
+  let longPressTimer = null;
+  const LONG_PRESS_DELAY = 250;
+
   const tableBtns = document.querySelectorAll('.table-btn');
   tableBtns.forEach(btn => {
     btn.addEventListener('mousedown', (e) => {
-      // Prevent drag initiation if they click a nested button
       if (e.target.closest('button')) return;
 
       if (isEditMode) {
@@ -355,6 +357,9 @@ function attachDragListeners() {
         const rect = btn.getBoundingClientRect();
         dragOffsetX = e.clientX - rect.left;
         dragOffsetY = e.clientY - rect.top;
+        
+        // Fluid transition removal while dragging
+        btn.style.transition = 'none';
         
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
@@ -367,22 +372,38 @@ function attachDragListeners() {
       if (e.target.closest('button')) return;
 
       if (isEditMode) {
-        draggingTableId = btn.getAttribute('data-id');
+        const tableId = btn.getAttribute('data-id');
         const rect = btn.getBoundingClientRect();
-        dragOffsetX = e.touches[0].clientX - rect.left;
-        dragOffsetY = e.touches[0].clientY - rect.top;
         
-        document.addEventListener('touchmove', handleMouseMove, { passive: false });
-        document.addEventListener('touchend', handleMouseUp);
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        longPressTimer = setTimeout(() => {
+          draggingTableId = tableId;
+          dragOffsetX = e.touches[0].clientX - rect.left;
+          dragOffsetY = e.touches[0].clientY - rect.top;
+          btn.style.transition = 'none';
+          btn.classList.add('scale-110', 'shadow-2xl');
+          
+          document.addEventListener('touchmove', handleMouseMove, { passive: false });
+          document.addEventListener('touchend', handleMouseUp);
+        }, LONG_PRESS_DELAY);
+      }
+    });
+
+    btn.addEventListener('touchend', () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
       }
     });
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (!isEditMode) {
-        selectedTableId = btn.getAttribute('data-id');
+      const tableId = btn.getAttribute('data-id');
+      
+      if (isEditMode) {
+        // Fix: Clicking a table in edit mode now opens renaming/details
+        window.openEditName(e, tableId);
+      } else {
+        selectedTableId = tableId;
         reRender();
       }
     });

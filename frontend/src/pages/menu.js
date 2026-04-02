@@ -8,6 +8,7 @@ let selectedCategory = 'All';
 let isAddItemOpen = false;
 let editingItem = null;
 let paymentMethod = 'M-Pesa';
+let menuEditMode = false;
 
 
 
@@ -70,13 +71,24 @@ function renderMenu() {
           </div>
 
           ${userRole === 'owner' ? `
-            <button 
-              onclick="window.openAddItemModal()"
-              class="px-6 py-3 bg-[#FF0000] text-white rounded-2xl flex items-center gap-2 font-bold shadow-xl shadow-red-500/30 active:scale-95 transition-all"
-            >
-              <i data-lucide="plus-circle" class="w-5 h-5"></i>
-              Add New Item
-            </button>
+            <div class="flex items-center gap-3">
+              <button 
+                onclick="window.toggleMenuEditMode()"
+                class="px-5 py-3 rounded-2xl flex items-center gap-2 font-bold transition-all ${menuEditMode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-gray-100 dark:bg-black border dark:border-[#111] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-900'}"
+              >
+                <i data-lucide="${menuEditMode ? 'save' : 'edit-3'}" class="w-5 h-5"></i>
+                ${menuEditMode ? 'Exit Edit Mode' : 'Edit Menu'}
+              </button>
+              ${menuEditMode ? `
+                <button 
+                  onclick="window.openAddItemModal()"
+                  class="px-6 py-3 bg-[#FF0000] text-white rounded-2xl flex items-center gap-2 font-bold shadow-xl shadow-red-500/30 active:scale-95 transition-all animate-in zoom-in duration-300"
+                >
+                  <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                  Add Item
+                </button>
+              ` : ''}
+            </div>
           ` : ''}
         </div>
 
@@ -94,8 +106,8 @@ function renderMenu() {
                       : "border-transparent hover:border-gray-300 dark:hover:border-zinc-800 " + (isDarkMode ? "bg-black" : "bg-white")
                   }" onclick="window.handleAdd('${item.id}')">
                   
-                  ${userRole === 'owner' ? `
-                    <div class="absolute top-4 right-4 flex gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  ${userRole === 'owner' && menuEditMode ? `
+                    <div class="absolute top-4 right-4 flex gap-2 z-20 transition-opacity animate-in fade-in zoom-in duration-300">
                       <button 
                         onclick="window.openEditModal('${item.id}'); event.stopPropagation();"
                         class="p-2 bg-blue-500 text-white rounded-xl shadow-lg hover:bg-blue-600"
@@ -439,6 +451,11 @@ window.openEditModal = (itemId) => {
 
 window.deleteItem = (itemId) => {
   store.deleteMenuItem(itemId);
+  reRender();
+};
+
+window.toggleMenuEditMode = () => {
+  menuEditMode = !menuEditMode;
   reRender();
 };
 

@@ -114,11 +114,21 @@ function attachListeners() {
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
 
+    const btn = form.querySelector('button[type="submit"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin mr-2 inline-block"></i> LOGGING IN...`;
+    createIcons({ icons });
+
     const result = await store.login(username, password);
     
     if (result.success) {
       window.location.href = '/';
     } else {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      createIcons({ icons });
+      
       let message = result.message || 'Invalid username or password. Please try again.';
       
       // Specifically handle suspended accounts (Fix #5)

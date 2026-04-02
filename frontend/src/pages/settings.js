@@ -5,6 +5,8 @@ import { createIcons, icons } from 'lucide';
 
 let settingsFeedback = '';
 let settingsError = '';
+let activeStaffInterval = null;
+let activeUsernames = [];
 
 function renderSettings() {
   const isDarkMode = store.isDarkMode;
@@ -95,6 +97,15 @@ function renderSettings() {
                   </button>
                 </div>
               </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Confirm Password</label>
+                <div class="relative">
+                  <input id="confirmPasswordInput" required type="password" minlength="6" placeholder="Confirm password" class="w-full pl-4 pr-12 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                  <button type="button" onclick="window.togglePasswordVisibility('confirmPasswordInput')" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF0000] transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div id="form-error" class="hidden text-xs font-bold text-[#FF0000] bg-red-50 dark:bg-red-500/10 p-3 rounded-xl"></div>
@@ -122,24 +133,27 @@ function renderSettings() {
                         <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${user.role === 'owner' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-200 text-gray-600 dark:bg-[#111] dark:text-gray-400 border dark:border-white/5'}">
                           ${store.sanitize(user.role)}
                         </span>
+                        <div class="active-status-badge" data-username="${user.username}">
+                          ${activeUsernames.includes(user.username) ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-600 animate-pulse">Active Now</span>' : ''}
+                        </div>
                         ${!user.isActive ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-600 animate-pulse">Suspended</span>' : ''}
                       </div>
                     </div>
                   </div>
 
                   <div class="flex gap-2">
-                    ${user.role !== 'owner' ? `
+                    ${user.id !== store.currentUserId ? `
                       <button onclick="window.toggleUserStatus('${user.id}')" class="p-3 ${user.isActive ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-500/10' : 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10'} rounded-2xl transition-all shadow-sm" title="${user.isActive ? 'Suspend' : 'Activate'}">
                         <i data-lucide="${user.isActive ? 'user-minus' : 'user-check'}" class="w-5 h-5"></i>
                       </button>
                       <button onclick="window.updateUserRole('${user.id}', '${user.role === 'owner' ? 'cashier' : 'owner'}')" class="p-3 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 rounded-2xl transition-all shadow-sm" title="${user.role === 'owner' ? 'Demote to Cashier' : 'Promote to Owner'}">
                         <i data-lucide="${user.role === 'owner' ? 'arrow-down-circle' : 'arrow-up-circle'}" class="w-5 h-5"></i>
                       </button>
-                      <button onclick="window.deleteUser('${user.id}')" class="p-3 bg-red-50 text-[#FF0000] hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-2xl transition-all shadow-sm" title="Delete Cashier">
+                      <button onclick="window.deleteUser('${user.id}')" class="p-3 bg-red-50 text-[#FF0000] hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-2xl transition-all shadow-sm" title="Delete User">
                         <i data-lucide="trash-2" class="w-5 h-5"></i>
                       </button>
                     ` : `
-                      <div class="p-3 text-gray-300 dark:text-gray-700">
+                      <div class="p-3 text-gray-300 dark:text-gray-700" title="You (Admin)">
                         <i data-lucide="shield-check" class="w-5 h-5"></i>
                       </div>
                     `}
@@ -160,6 +174,26 @@ function renderSettings() {
   setTimeout(() => {
     createIcons({ icons });
     attachListeners();
+    
+    // Start active staff polling
+    if (!activeStaffInterval) {
+      const fetchActiveStaff = async () => {
+        try {
+          const data = await store.apiClient.get('/reports/summary/all');
+          activeUsernames = data.week?.summary?.activeUsernames || [];
+          // Instead of full re-render which loses input focus, just update status badges
+          document.querySelectorAll('.active-status-badge').forEach(badge => {
+            const username = badge.getAttribute('data-username');
+            const isActive = activeUsernames.includes(username);
+            badge.innerHTML = isActive 
+              ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-600 animate-pulse">Active Now</span>'
+              : '';
+          });
+        } catch (err) { console.error('Active staff poll failed', err); }
+      };
+      fetchActiveStaff();
+      activeStaffInterval = setInterval(fetchActiveStaff, 15000);
+    }
   }, 0);
 }
 
@@ -174,8 +208,15 @@ function attachListeners() {
       event.preventDefault();
       const username = document.getElementById('newUsername').value.trim();
       const password = document.getElementById('newPasswordInput').value;
+      const confirmPassword = document.getElementById('confirmPasswordInput').value;
 
-      if (!username || !password) return;
+      if (!username || !password || !confirmPassword) return;
+
+      if (password !== confirmPassword) {
+        formError.textContent = 'Passwords do not match.';
+        formError.classList.remove('hidden');
+        return;
+      }
 
       if (store.users.some((user) => user.username.toLowerCase() === username.toLowerCase())) {
         formError.textContent = 'A user with this username already exists.';

@@ -59,11 +59,11 @@ const protect = async (req, res, next) => {
     userCache.set(decoded.id, jsonUser);
 
 
-    // Refresh lastActiveAt (Rate limited to once per 10 mins)
+    // Refresh lastActiveAt (Rate limited to once per 30 seconds)
     const lastUpdate = userCache.get(`active_${decoded.id}`);
-    const TEN_MINS = 10 * 60 * 1000;
+    const UPDATE_INTERVAL = 30 * 1000;
 
-    if (!lastUpdate || (Date.now() - lastUpdate > TEN_MINS)) {
+    if (!lastUpdate || (Date.now() - lastUpdate > UPDATE_INTERVAL)) {
       userCache.set(`active_${decoded.id}`, Date.now());
       prisma.user.update({
         where: { id: decoded.id },

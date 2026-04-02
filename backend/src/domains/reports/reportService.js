@@ -192,7 +192,7 @@ const getReportSummary = async ({ timeframe = 'week', user }) => {
   };
 
   // Active users — a separate lightweight query, not joined to bills.
-  const activeThreshold = new Date(Date.now() - 5 * 60 * 1000);
+  const activeThreshold = new Date(Date.now() - 2 * 60 * 1000);
   const activeUsers = await prisma.user.findMany({
     where: { lastActiveAt: { gte: activeThreshold } },
     select: { username: true },
