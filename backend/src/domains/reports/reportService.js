@@ -12,27 +12,37 @@ const REPORT_TIMEZONE = 'Africa/Nairobi';
 // ---------------------------------------------------------------------------
 
 const getDateRange = (timeframe) => {
-  // Use Intl API to get the current time formatted for Nairobi.
-  // This helps us anchor "midnight" to the correct geographical location.
-  const nairobiString = new Date().toLocaleString('en-US', { timeZone: REPORT_TIMEZONE });
-  const end = new Date(nairobiString);
-  const start = new Date(nairobiString);
+  // Nairobi is UTC+3.
+  const NAIROBI_OFFSET_MS = 3 * 60 * 60 * 1000;
+  const now = new Date();
+
+  // 1. Project current UTC time into Nairobi local "clock time"
+  const nairobiNow = new Date(now.getTime() + NAIROBI_OFFSET_MS);
+  
+  const startLocal = new Date(nairobiNow);
+  const endLocal = new Date(nairobiNow);
 
   if (timeframe === 'day') {
-    start.setHours(0, 0, 0, 0);
-    return { start, end, label: 'Today' };
+    startLocal.setUTCHours(0, 0, 0, 0);
+  } else if (timeframe === 'month') {
+    startLocal.setUTCDate(1);
+    startLocal.setUTCHours(0, 0, 0, 0);
+  } else {
+    // Default: 'week' (Last 7 Days)
+    startLocal.setUTCDate(endLocal.getUTCDate() - 6);
+    startLocal.setUTCHours(0, 0, 0, 0);
   }
 
-  if (timeframe === 'month') {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-    return { start, end, label: 'This Month' };
-  }
+  // 2. Convert the "Local clock time midnight" back to an absolute UTC Date for Prisma
+  const start = new Date(startLocal.getTime() - NAIROBI_OFFSET_MS);
+  const end = now; // Real-time reporting up to current UTC moment
 
-  // Default: last 7 days from Nairobi midnight 7 days ago
-  start.setDate(end.getDate() - 6);
-  start.setHours(0, 0, 0, 0);
-  return { start, end, label: 'Last 7 Days' };
+  const labels = { day: 'Today', month: 'This Month', week: 'Last 7 Days' };
+  return { 
+    start, 
+    end, 
+    label: labels[timeframe] || labels.week 
+  };
 };
 
 // ---------------------------------------------------------------------------

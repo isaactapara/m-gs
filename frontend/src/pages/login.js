@@ -94,9 +94,6 @@ function attachListeners() {
   const toggleBtn = document.getElementById('toggle-password');
   const errorDiv = document.getElementById('error-message');
   
-  const originalUsername = document.getElementById('username').value;
-  const originalPassword = document.getElementById('password').value;
-
   toggleBtn.addEventListener('click', () => {
     showPassword = !showPassword;
     const pwInput = document.getElementById('password');
@@ -111,6 +108,11 @@ function attachListeners() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    errorDiv.classList.add('hidden');
+    errorDiv.textContent = '';
+    
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
 

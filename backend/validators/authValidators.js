@@ -24,6 +24,13 @@ const loginValidators = [
 const registerValidators = [
   usernameRule,
   passwordRule,
+  body('confirmPassword')
+    .custom((value, { req }) => {
+      if (value !== req.body.password) {
+        throw new Error('Passwords do not match');
+      }
+      return true;
+    }),
   body('role')
     .optional()
     .isIn(['owner', 'cashier'])
