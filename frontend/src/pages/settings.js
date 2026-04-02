@@ -5,7 +5,6 @@ import { createIcons, icons } from 'lucide';
 
 let settingsFeedback = '';
 let settingsError = '';
-let activeUsernames = [];
 
 function renderSettings() {
   const isDarkMode = store.isDarkMode;
