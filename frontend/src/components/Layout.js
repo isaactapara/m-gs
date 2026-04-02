@@ -27,7 +27,7 @@ export function renderLayout(contentHtml, currentPage = '/') {
     <div class="flex h-screen w-full transition-colors duration-500 overflow-hidden ${isDarkMode ? "bg-black text-white" : "bg-white text-gray-900"}">
       
       <!-- Mobile Sidebar Overlay (Enhanced) -->
-      <div id="mobile-sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden backdrop-blur-sm transition-opacity duration-500" onclick="window.toggleSidebar()"></div>
+      <div id="mobile-sidebar-overlay" class="fixed inset-0 bg-black/60 z-40 hidden backdrop-blur-sm transition-opacity duration-500" style="pointer-events: none" onclick="window.toggleSidebar()"></div>
 
       <!-- Progressive Navigation Sidebar -->
       <aside 
@@ -150,9 +150,11 @@ export function initLayoutListeners() {
     if (sidebar.classList.contains('-translate-x-full')) {
       sidebar.classList.remove('-translate-x-full');
       overlay.classList.remove('hidden');
+      overlay.style.pointerEvents = 'auto';
     } else {
       sidebar.classList.add('-translate-x-full');
       overlay.classList.add('hidden');
+      overlay.style.pointerEvents = 'none';
     }
   };
 

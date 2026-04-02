@@ -135,7 +135,7 @@ const getUsers = asyncHandler(async (req, res) => {
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, username } = req.body;
 
   if (!newPassword || newPassword.length < 6) {
     throw new AppError('Password must be at least 6 characters long', 400, 'WEAK_PASSWORD');
@@ -148,21 +148,43 @@ const updatePassword = asyncHandler(async (req, res) => {
     throw new AppError('Current password is incorrect', 401, 'INVALID_PASSWORD');
   }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const updateData = {};
+  
+  if (newPassword) {
+    updateData.password = await bcrypt.hash(newPassword, 10);
+  }
+
+  if (username) {
+    const normalizedUsername = String(username).toLowerCase().trim();
+    if (normalizedUsername !== user.username) {
+      const existingUser = await prisma.user.findUnique({ where: { username: normalizedUsername } });
+      if (existingUser) {
+        throw new AppError('Username already taken', 400, 'USERNAME_TAKEN');
+      }
+      updateData.username = normalizedUsername;
+    }
+  }
+
   await prisma.user.update({
     where: { id: req.user.id },
-    data: { password: hashedPassword }
+    data: updateData
   });
 
   await recordAuditEvent({
     req,
-    action: 'user.password_changed',
+    action: 'user.profile_updated',
     entityType: 'User',
     entityId: req.user.id,
-    metadata: { username: user.username },
+    metadata: { 
+      username: username || user.username,
+      passwordChanged: !!newPassword
+    },
   });
 
-  res.json({ message: 'Password updated successfully' });
+  res.json({ 
+    message: 'Profile updated successfully',
+    username: updateData.username || user.username
+  });
 });
 
 const toggleUserStatus = asyncHandler(async (req, res) => {

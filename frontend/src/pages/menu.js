@@ -59,7 +59,7 @@ function renderMenu() {
             
             <div class="flex flex-wrap gap-2">
               ${uniqueCategories.map(cat => `
-                <button onclick="window.setCategory('${cat}')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                <button data-category="${cat}" class="js-set-category px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                   selectedCategory === cat
                     ? "bg-[#FF0000] text-white shadow-lg shadow-red-500/20"
                     : "bg-gray-200 dark:bg-black border dark:border-[#111] text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-900"
@@ -73,16 +73,14 @@ function renderMenu() {
           ${userRole === 'owner' ? `
             <div class="flex items-center gap-3">
               <button 
-                onclick="window.toggleMenuEditMode()"
-                class="px-5 py-3 rounded-2xl flex items-center gap-2 font-bold transition-all ${menuEditMode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-gray-100 dark:bg-black border dark:border-[#111] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-900'}"
+                class="js-toggle-menu-edit px-5 py-3 rounded-2xl flex items-center gap-2 font-bold transition-all ${menuEditMode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-gray-100 dark:bg-black border dark:border-[#111] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-900'}"
               >
                 <i data-lucide="${menuEditMode ? 'save' : 'edit-3'}" class="w-5 h-5"></i>
                 ${menuEditMode ? 'Exit Edit Mode' : 'Edit Menu'}
               </button>
               ${menuEditMode ? `
                 <button 
-                  onclick="window.openAddItemModal()"
-                  class="px-6 py-3 bg-[#FF0000] text-white rounded-2xl flex items-center gap-2 font-bold shadow-xl shadow-red-500/30 active:scale-95 transition-all animate-in zoom-in duration-300"
+                  class="js-open-add-item px-6 py-3 bg-[#FF0000] text-white rounded-2xl flex items-center gap-2 font-bold shadow-xl shadow-red-500/30 active:scale-95 transition-all animate-in zoom-in duration-300"
                 >
                   <i data-lucide="plus-circle" class="w-5 h-5"></i>
                   Add Item
@@ -100,23 +98,21 @@ function renderMenu() {
               const quantity = cartItem?.quantity || 0;
 
               return `
-                <div class="rounded-[28px] p-6 flex flex-col justify-between shadow-xl border-2 transition-all relative group cursor-pointer ${
+                <div data-id="${item.id}" class="js-menu-item rounded-[28px] p-6 flex flex-col justify-between shadow-xl border-2 transition-all relative group cursor-pointer ${
                     quantity > 0 
                       ? "border-[#FF0000] " + (isDarkMode ? "bg-black" : "bg-red-50/20") 
                       : "border-transparent hover:border-gray-300 dark:hover:border-zinc-800 " + (isDarkMode ? "bg-black" : "bg-white")
-                  }" onclick="window.handleAdd('${item.id}')">
+                  }">
                   
                   ${userRole === 'owner' && menuEditMode ? `
                     <div class="absolute top-4 right-4 flex gap-2 z-20 transition-opacity animate-in fade-in zoom-in duration-300">
                       <button 
-                        onclick="window.openEditModal('${item.id}'); event.stopPropagation();"
-                        class="p-2 bg-blue-500 text-white rounded-xl shadow-lg hover:bg-blue-600"
+                        class="js-open-edit-modal p-2 bg-blue-500 text-white rounded-xl shadow-lg hover:bg-blue-600"
                       >
                         <i data-lucide="edit-2" class="w-[14px] h-[14px]"></i>
                       </button>
                       <button 
-                        onclick="window.deleteItem('${item.id}'); event.stopPropagation();"
-                        class="p-2 bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600"
+                        class="js-delete-item p-2 bg-red-500 text-white rounded-xl shadow-lg hover:bg-red-600"
                       >
                         <i data-lucide="trash-2" class="w-[14px] h-[14px]"></i>
                       </button>
@@ -139,12 +135,11 @@ function renderMenu() {
                     </div>
                   </div>
 
-                  <div class="mt-8 flex items-center justify-between bg-gray-50 dark:bg-black border dark:border-[#111] rounded-2xl p-2 relative z-10">
+                  <div class="mt-8 flex items-center justify-between bg-gray-50 dark:bg-black border dark:border-[#111] rounded-2xl p-2 relative z-10 pointer-events-auto">
                      ${quantity > 0 ? `
-                        <div class="flex items-center gap-3 w-full justify-between" onclick="event.stopPropagation()">
+                        <div class="flex items-center gap-3 w-full justify-between">
                           <button 
-                            onclick="window.handleRemove('${item.id}')"
-                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#111] border dark:border-white/5 shadow-sm text-[#FF0000] active:scale-90 transition-transform"
+                            class="js-handle-remove w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#111] border dark:border-white/5 shadow-sm text-[#FF0000] active:scale-90 transition-transform"
                           >
                             <i data-lucide="minus" class="w-[18px] h-[18px]"></i>
                           </button>
@@ -152,14 +147,13 @@ function renderMenu() {
                             ${quantity}
                           </span>
                           <button 
-                            onclick="window.handleAdd('${item.id}')"
-                            class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#FF0000] text-white shadow-lg shadow-red-500/20 active:scale-90 transition-transform"
+                            class="js-handle-add w-10 h-10 flex items-center justify-center rounded-xl bg-[#FF0000] text-white shadow-lg shadow-red-500/20 active:scale-90 transition-transform"
                           >
                             <i data-lucide="plus" class="w-[18px] h-[18px]"></i>
                           </button>
                         </div>
                      ` : `
-                        <div class="w-full py-3 flex items-center justify-center gap-2 rounded-xl font-black text-sm transition-all bg-gray-200 dark:bg-[#111] text-gray-700 dark:text-gray-400 hover:bg-[#FF0000] hover:text-white pointer-events-none border dark:border-white/5">
+                        <div class="w-full py-3 flex items-center justify-center gap-2 rounded-xl font-black text-sm transition-all bg-gray-200 dark:bg-[#111] text-gray-700 dark:text-gray-400 group-hover:bg-[#FF0000] group-hover:text-white border dark:border-white/5">
                          <i data-lucide="plus" class="w-[18px] h-[18px]"></i> Add to Order
                        </div>
                      `}
@@ -183,7 +177,7 @@ function renderMenu() {
                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">${cartItemCount} items selected</p>
             </div>
           </div>
-          <button onclick="window.clearCart()" class="text-xs font-bold text-gray-400 hover:text-[#FF0000] tracking-widest uppercase transition-colors">
+          <button class="js-clear-cart text-xs font-bold text-gray-400 hover:text-[#FF0000] tracking-widest uppercase transition-colors">
             Clear
           </button>
         </div>
@@ -207,8 +201,8 @@ function renderMenu() {
                   <p class="font-black ${isDarkMode ? "text-white" : "text-gray-900"}">${settings.currency} ${item.price * item.quantity}</p>
                 </div>
                 <button 
-                  onclick="window.handleRemove('${item.id}')"
-                  class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-500 border border-red-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white dark:bg-red-900/50 dark:border-red-500/30"
+                  data-id="${item.id}"
+                  class="js-handle-remove absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-500 border border-red-200 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white dark:bg-red-900/50 dark:border-red-500/30"
                 >
                   <i data-lucide="x" class="w-3 h-3"></i>
                 </button>
@@ -226,7 +220,7 @@ function renderMenu() {
             <!-- Payment Methods -->
             <div class="flex gap-2 p-1.5 rounded-2xl bg-gray-100 dark:bg-[#0a0a0a] border dark:border-[#111]">
               ${['M-Pesa', 'Cash'].map(method => `
-                <button onclick="window.setPayment('${method}')" class="flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
+                <button data-method="${method}" class="js-set-payment flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
                   paymentMethod === method 
                     ? "bg-white dark:bg-[#111] shadow-sm text-gray-900 dark:text-white border dark:border-white/10" 
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
@@ -238,12 +232,12 @@ function renderMenu() {
 
             <div class="grid grid-cols-2 gap-3">
               <button 
-                onclick="window.submitOrder('PENDING')"
-                class="py-4 rounded-2xl font-black transition-all flex flex-col items-center justify-center gap-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-2 border-transparent hover:border-amber-500/30"
+                class="js-submit-order py-4 rounded-2xl font-black transition-all flex flex-col items-center justify-center gap-1 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-2 border-transparent hover:border-amber-500/30"
+                data-status="PENDING"
               >
                 <i data-lucide="clock" class="w-6 h-6 mb-1"></i> PAY LATER
               </button>
-              <button onclick="window.submitOrder('PAID')" ${cart.length === 0 || store.isPaymentProcessing ? 'disabled' : ''} class="w-full sm:w-auto py-5 sm:py-4 px-8 rounded-2xl font-black text-white flex items-center justify-center gap-2 transition-all ${
+              <button data-status="PAID" ${cart.length === 0 || store.isPaymentProcessing ? 'disabled' : ''} class="js-submit-order w-full sm:w-auto py-5 sm:py-4 px-8 rounded-2xl font-black text-white flex items-center justify-center gap-2 transition-all ${
                   paymentStatus === 'success' ? "bg-green-500 shadow-green-500/40" : 
                   paymentStatus === 'error' ? "bg-amber-500 shadow-amber-500/40" : 
                   "bg-[#FF0000] shadow-red-500/40 hover:bg-red-600 hover:-translate-y-1"
@@ -260,15 +254,14 @@ function renderMenu() {
       <!-- Add/Edit Overlay Drawer -->
       ${isAddItemOpen ? `
         <div 
-          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity animate-in fade-in"
-          onclick="window.closeAddItemModal()"
+          class="js-close-add-item fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-opacity animate-in fade-in"
         ></div>
         <div class="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 shadow-2xl p-8 flex flex-col transition-transform slide-in-from-right animate-in ${isDarkMode ? "bg-black border-l border-[#111]" : "bg-white"}">
           <div class="flex justify-between items-center mb-10">
             <h2 class="text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}">
               ${editingItem ? 'Edit Dish' : 'New Dish'}
             </h2>
-            <button onclick="window.closeAddItemModal()" class="p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500">
+            <button class="js-close-add-item p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500">
               <i data-lucide="x" class="w-6 h-6"></i>
             </button>
           </div>
@@ -336,20 +329,122 @@ function renderMenu() {
   }, 0);
 }
 
+let isGlobalListenerAttached = false;
+
+function handleMenuClicks(e) {
+  // Category Filter
+  const categoryBtn = e.target.closest('.js-set-category');
+  if (categoryBtn) {
+    const cat = categoryBtn.getAttribute('data-category');
+    window.setCategory(cat);
+    return;
+  }
+
+  // Toggle Edit Mode
+  if (e.target.closest('.js-toggle-menu-edit')) {
+    window.toggleMenuEditMode();
+    return;
+  }
+
+  // Open Add Item Modal
+  if (e.target.closest('.js-open-add-item')) {
+    window.openAddItemModal();
+    return;
+  }
+
+  // Edit Item (modal)
+  const editBtn = e.target.closest('.js-open-edit-modal');
+  if (editBtn) {
+    const itemId = editBtn.closest('[data-id]').getAttribute('data-id');
+    window.openEditModal(itemId);
+    return;
+  }
+
+  // Delete Item
+  const deleteBtn = e.target.closest('.js-delete-item');
+  if (deleteBtn) {
+    const itemId = deleteBtn.closest('[data-id]').getAttribute('data-id');
+    window.deleteItem(itemId);
+    return;
+  }
+
+  // Add Item to Cart
+  const addBtn = e.target.closest('.js-handle-add');
+  const menuCard = e.target.closest('.js-menu-item');
+  if (addBtn || menuCard) {
+    const itemId = (addBtn || menuCard).closest('[data-id]').getAttribute('data-id');
+    window.handleAdd(itemId);
+    return;
+  }
+
+  // Remove Item from Cart / Decrement
+  const removeBtn = e.target.closest('.js-handle-remove');
+  if (removeBtn) {
+    const itemId = removeBtn.closest('[data-id]').getAttribute('data-id');
+    window.handleRemove(itemId);
+    return;
+  }
+
+  // Clear Cart
+  if (e.target.closest('.js-clear-cart')) {
+    window.clearCart();
+    return;
+  }
+
+  // Set Payment Method
+  const paymentBtn = e.target.closest('.js-set-payment');
+  if (paymentBtn) {
+    const method = paymentBtn.getAttribute('data-method');
+    window.setPayment(method);
+    return;
+  }
+
+  // Submit Order
+  const submitBtn = e.target.closest('.js-submit-order');
+  if (submitBtn) {
+    const status = submitBtn.getAttribute('data-status');
+    window.submitOrder(status);
+    return;
+  }
+
+  // Close Modal Overlay / Button
+  if (e.target.closest('.js-close-add-item')) {
+    window.closeAddItemModal();
+    return;
+  }
+}
+
+function attachGlobalListeners() {
+  if (isGlobalListenerAttached) return;
+  
+  document.getElementById('root').addEventListener('click', handleMenuClicks);
+  
+  // Search listener - attached once
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'search-input') {
+      search = e.target.value;
+      reRender();
+      
+      // Restore focus after re-render if it was the search input
+      setTimeout(() => {
+        const input = document.getElementById('search-input');
+        if (input) {
+          input.focus();
+          input.setSelectionRange(search.length, search.length);
+        }
+      }, 0);
+    }
+  });
+
+  isGlobalListenerAttached = true;
+}
+
 function reRender() {
   renderMenu();
 }
 
 function attachListeners() {
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      search = e.target.value;
-      reRender();
-    });
-    searchInput.focus();
-    searchInput.setSelectionRange(search.length, search.length);
-  }
+  attachGlobalListeners();
 
   const addItemForm = document.getElementById('add-item-form');
   if (addItemForm) {

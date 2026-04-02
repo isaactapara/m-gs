@@ -5,7 +5,6 @@ import { createIcons, icons } from 'lucide';
 
 let settingsFeedback = '';
 let settingsError = '';
-let activeStaffInterval = null;
 let activeUsernames = [];
 
 function renderSettings() {
@@ -47,6 +46,10 @@ function renderSettings() {
             </div>
 
             <div class="space-y-4">
+              <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Username</label>
+                <input id="updateUsername" type="text" required value="${store.currentUser?.username || ''}" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+              </div>
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Current Password</label>
                 <div class="relative">
@@ -133,9 +136,6 @@ function renderSettings() {
                         <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${user.role === 'owner' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' : 'bg-gray-200 text-gray-600 dark:bg-[#111] dark:text-gray-400 border dark:border-white/5'}">
                           ${store.sanitize(user.role)}
                         </span>
-                        <div class="active-status-badge" data-username="${user.username}">
-                          ${activeUsernames.includes(user.username) ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-600 animate-pulse">Active Now</span>' : ''}
-                        </div>
                         ${!user.isActive ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-100 text-red-600 animate-pulse">Suspended</span>' : ''}
                       </div>
                     </div>
@@ -175,29 +175,6 @@ function renderSettings() {
     createIcons({ icons });
     attachListeners();
     
-    // Start active staff polling
-    if (!activeStaffInterval) {
-      const fetchActiveStaff = async () => {
-        try {
-          const data = await store.apiClient.get('/reports/summary/all');
-          activeUsernames = data.week?.summary?.activeUsernames || [];
-          // Instead of full re-render which loses input focus, just update status badges
-          document.querySelectorAll('.active-status-badge').forEach(badge => {
-            const username = badge.getAttribute('data-username');
-            const isActive = activeUsernames.includes(username);
-            badge.innerHTML = isActive 
-              ? '<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-600 animate-pulse">Active Now</span>'
-              : '';
-          });
-        } catch (err) { console.error('Active staff poll failed', err); }
-      };
-      fetchActiveStaff();
-      window.addEventListener('beforeunload', () => {
-        clearInterval(activeStaffInterval);
-        activeStaffInterval = null;
-      });
-      activeStaffInterval = setInterval(fetchActiveStaff, 15000);
-    }
   }, 0);
 }
 
@@ -253,18 +230,11 @@ function attachListeners() {
   if (passwordForm) {
     passwordForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const currentPassword = document.getElementById('currentPassword').value;
-      const newPassword = document.getElementById('newPassword').value;
-
-      const button = event.submitter;
-      const originalText = button.innerHTML;
-      button.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> UPDATING...`;
-      button.disabled = true;
-      createIcons({ icons });
-
+      const username = document.getElementById('updateUsername').value.trim();
+      
       try {
-        await store.apiClient.patch('/auth/change-password', { currentPassword, newPassword });
-        passwordFeedback.textContent = 'Password updated successfully!';
+        await store.apiClient.patch('/auth/change-password', { currentPassword, newPassword, username });
+        passwordFeedback.textContent = 'Profile updated successfully!';
         passwordFeedback.className = 'text-xs font-bold p-3 rounded-xl bg-green-50 text-green-600 dark:bg-green-500/10 block';
         document.getElementById('currentPassword').value = '';
         document.getElementById('newPassword').value = '';

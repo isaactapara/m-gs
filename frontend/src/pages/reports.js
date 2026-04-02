@@ -129,8 +129,6 @@ window.exportToPDF = async () => {
     doc.text(`Total Sales This Week:  ${currency()} ${fmt(summaryWeek.totalSales)}   (${summaryWeek.billCount || 0} bills)`, margins, yPos);
     yPos += 7;
     doc.text(`Total Sales This Month: ${currency()} ${fmt(summaryMonth.totalSales)}   (${summaryMonth.billCount || 0} bills)`, margins, yPos);
-    yPos += 7;
-    doc.text(`Active Staff Now: ${summaryDay.activeUsersCount || 0}`, margins, yPos);
 
     yPos += 12;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
@@ -213,16 +211,6 @@ function renderReports() {
       icon: 'trending-up',
       accent: 'text-blue-500',
       bg: 'bg-blue-500/10',
-    },
-    {
-      label: 'Active Staff Now',
-      value: `${daySum.activeUsersCount || 0}`,
-      sub: daySum.activeUsernames?.length > 0
-        ? daySum.activeUsernames.slice(0, 3).join(', ')
-        : 'No staff online',
-      icon: 'user-check',
-      accent: 'text-green-500',
-      bg: 'bg-green-500/10',
     },
   ];
 
