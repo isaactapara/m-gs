@@ -211,7 +211,7 @@ function attachListeners() {
       button.disabled = true;
       createIcons({ icons });
 
-      const result = await store.addUser(username, password);
+      const result = await store.addUser(username, password, confirmPassword);
       if (!result.success) {
         formError.textContent = result.message;
         formError.classList.remove('hidden');

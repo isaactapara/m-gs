@@ -231,11 +231,12 @@ export class BillingStore {
     }
   }
 
-  async addUser(username, password) {
+  async addUser(username, password, confirmPassword) {
     try {
       const data = await this.rootStore.apiClient.post('/auth/register', {
         username,
         password,
+        confirmPassword: confirmPassword,
         role: 'cashier',
       });
 
