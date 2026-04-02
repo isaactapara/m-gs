@@ -245,9 +245,17 @@ export class BillingStore {
       this.rootStore.notify();
       return { success: true, message: `Staff character '${username}' provisioned successfully!` };
     } catch (error) {
+      const errorBody = error.response?.data?.error;
+      let message = errorBody?.message || 'Failed to create user.';
+      
+      // If validation details are available, show the first specific error
+      if (errorBody?.details?.[0]) {
+        message = `${message}: ${errorBody.details[0].message}`;
+      }
+
       return {
         success: false,
-        message: error.response?.data?.error?.message || error.response?.data?.message || 'Failed to create user.',
+        message,
       };
     }
   }

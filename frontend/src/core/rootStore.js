@@ -185,7 +185,7 @@ export class RootStore {
   async updateBillStatus(id, status, paymentMethod = null) {
     return this.billingStore.updateBillStatus(id, status, paymentMethod);
   }
-  async addUser(username, pin) { return this.billingStore.addUser(username, pin); }
+  async addUser(username, pin, confirmPassword) { return this.billingStore.addUser(username, pin, confirmPassword); }
   async deleteUser(id) { return this.billingStore.deleteUser(id); }
   async toggleUserStatus(id) { return this.billingStore.toggleUserStatus(id); }
   async updateUserRole(id, role) { return this.billingStore.updateUserRole(id, role); }
