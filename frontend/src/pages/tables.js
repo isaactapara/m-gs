@@ -337,6 +337,7 @@ function attachDragListeners() {
       store.updateTablePosition(draggingTableId, x, y);
       draggingTableId = null;
       
+      // Cleanup: Explicitly call removeEventListener for all handlers
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('touchmove', handleMouseMove);
@@ -372,6 +373,7 @@ function attachDragListeners() {
       if (e.target.closest('button')) return;
 
       if (isEditMode) {
+        if (longPressTimer) clearTimeout(longPressTimer);
         const tableId = btn.getAttribute('data-id');
         const rect = btn.getBoundingClientRect();
         
@@ -399,12 +401,12 @@ function attachDragListeners() {
       e.stopPropagation();
       const tableId = btn.getAttribute('data-id');
       
-      if (isEditMode) {
-        // Fix: Clicking a table in edit mode now opens renaming/details
-        window.openEditName(e, tableId);
-      } else {
+      if (!isEditMode) {
         selectedTableId = tableId;
         reRender();
+      } else {
+        // Fix: Clicking a table in edit mode now opens renaming/details
+        window.openEditName(e, tableId);
       }
     });
   });

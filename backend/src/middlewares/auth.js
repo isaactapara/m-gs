@@ -61,7 +61,7 @@ const protect = async (req, res, next) => {
 
     // Refresh lastActiveAt (Rate limited to once per 30 seconds)
     const lastUpdate = userCache.get(`active_${decoded.id}`);
-    const UPDATE_INTERVAL = 30 * 1000;
+    const UPDATE_INTERVAL = 60 * 1000;
 
     if (!lastUpdate || (Date.now() - lastUpdate > UPDATE_INTERVAL)) {
       userCache.set(`active_${decoded.id}`, Date.now());

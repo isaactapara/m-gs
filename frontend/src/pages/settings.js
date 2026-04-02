@@ -192,6 +192,10 @@ function renderSettings() {
         } catch (err) { console.error('Active staff poll failed', err); }
       };
       fetchActiveStaff();
+      window.addEventListener('beforeunload', () => {
+        clearInterval(activeStaffInterval);
+        activeStaffInterval = null;
+      });
       activeStaffInterval = setInterval(fetchActiveStaff, 15000);
     }
   }, 0);

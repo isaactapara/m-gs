@@ -120,23 +120,32 @@ function attachListeners() {
     btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin mr-2 inline-block"></i> LOGGING IN...`;
     createIcons({ icons });
 
-    const result = await store.login(username, password);
-    
-    if (result.success) {
-      window.location.href = '/';
-    } else {
+    try {
+      const result = await store.login(username, password);
+      
+      if (result.success) {
+        window.location.href = '/';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        createIcons({ icons });
+        
+        let message = result.message || 'Invalid username or password. Please try again.';
+        
+        // Specifically handle suspended accounts (Fix #5)
+        if (result.code === 'ACCOUNT_SUSPENDED') {
+          message = 'Your account has been suspended. Please contact the owner.';
+        }
+        
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+      }
+    } catch (error) {
+      console.error('Login system error:', error);
       btn.disabled = false;
       btn.innerHTML = originalText;
       createIcons({ icons });
-      
-      let message = result.message || 'Invalid username or password. Please try again.';
-      
-      // Specifically handle suspended accounts (Fix #5)
-      if (result.code === 'ACCOUNT_SUSPENDED') {
-        message = 'Your account has been suspended. Please contact the owner.';
-      }
-      
-      errorDiv.textContent = message;
+      errorDiv.textContent = 'A system error occurred. Please try again.';
       errorDiv.classList.remove('hidden');
     }
   });
