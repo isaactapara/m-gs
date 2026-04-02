@@ -12,35 +12,44 @@ const REPORT_TIMEZONE = 'Africa/Nairobi';
 // ---------------------------------------------------------------------------
 
 const getDateRange = (timeframe) => {
-  // Nairobi is UTC+3.
-  const NAIROBI_OFFSET_MS = 3 * 60 * 60 * 1000;
   const now = new Date();
 
-  // 1. Project current UTC time into Nairobi local "clock time"
-  const nairobiNow = new Date(now.getTime() + NAIROBI_OFFSET_MS);
-  
-  const startLocal = new Date(nairobiNow);
-  const endLocal = new Date(nairobiNow);
+  // 1. Get the current date in Nairobi
+  const nairobiParts = new Intl.DateTimeFormat('en-US', {
+    timeZone: REPORT_TIMEZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(now);
 
-  if (timeframe === 'day') {
-    startLocal.setUTCHours(0, 0, 0, 0);
-  } else if (timeframe === 'month') {
-    startLocal.setUTCDate(1);
-    startLocal.setUTCHours(0, 0, 0, 0);
-  } else {
-    // Default: 'week' (Last 7 Days)
-    startLocal.setUTCDate(endLocal.getUTCDate() - 6);
-    startLocal.setUTCHours(0, 0, 0, 0);
+  const parts = nairobiParts.reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+
+  // 2. Create a date object for Nairobi Midnight (00:00:00)
+  // This is a "local-looking" date used for calculation
+  let startLocal = new Date(
+    parseInt(parts.year),
+    parseInt(parts.month) - 1,
+    parseInt(parts.day),
+    0, 0, 0, 0
+  );
+
+  if (timeframe === 'month') {
+    startLocal.setDate(1);
+  } else if (timeframe === 'week') {
+    startLocal.setDate(startLocal.getDate() - 6);
   }
 
-  // 2. Convert the "Local clock time midnight" back to an absolute UTC Date for Prisma
-  const start = new Date(startLocal.getTime() - NAIROBI_OFFSET_MS);
-  const end = now; // Real-time reporting up to current UTC moment
+  // 3. Convert that "local" midnight to a real UTC Date object
+  // We format the local date as a string and re-parse it as Nairobi time to get the true UTC offset
+  const start = new Date(startLocal.toLocaleString('en-US', { timeZone: REPORT_TIMEZONE }));
 
   const labels = { day: 'Today', month: 'This Month', week: 'Last 7 Days' };
   return { 
     start, 
-    end, 
+    end: now, 
     label: labels[timeframe] || labels.week 
   };
 };
