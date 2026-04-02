@@ -13,7 +13,6 @@ const REPORT_TIMEZONE = 'Africa/Nairobi';
 
 const getDateRange = (timeframe) => {
   const now = new Date();
-  const REPORT_TIMEZONE = 'Africa/Nairobi';
 
   // 1. Get Nairobi's current date string (YYYY-MM-DD)
   const nairobiDateStr = now.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE });
