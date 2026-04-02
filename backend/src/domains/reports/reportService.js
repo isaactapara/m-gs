@@ -13,32 +13,33 @@ const REPORT_TIMEZONE = 'Africa/Nairobi';
 
 const getDateRange = (timeframe) => {
   const now = new Date();
+  const REPORT_TIMEZONE = 'Africa/Nairobi';
 
-  // 1. Get Nairobi's current date in YYYY-MM-DD format (en-CA is the ISO standard)
+  // 1. Get Nairobi's current date string (YYYY-MM-DD)
   const nairobiDateStr = now.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE });
-  const [year, month, day] = nairobiDateStr.split('-').map(Number);
+  let targetDateStr = nairobiDateStr;
 
-  // 2. Create a local-perspective date object for calculations
-  let calcDate = new Date(year, month - 1, day); 
-
-  if (timeframe === 'month') {
-    calcDate.setDate(1);
-  } else if (timeframe === 'week') {
-    calcDate.setDate(calcDate.getDate() - 6);
+  // 2. Safely calculate week/month boundaries using an anchored +03:00 Date object
+  if (timeframe === 'month' || timeframe === 'week') {
+    const anchoredDate = new Date(`${nairobiDateStr}T00:00:00+03:00`);
+    
+    if (timeframe === 'month') {
+      anchoredDate.setUTCDate(1);
+    } else {
+      anchoredDate.setUTCDate(anchoredDate.getUTCDate() - 6);
+    }
+    
+    // Extract the corrected YYYY-MM-DD string back out, strictly in Nairobi time
+    targetDateStr = anchoredDate.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE });
   }
 
-  // Format the calculated start date back to YYYY-MM-DD
-  const finalStartStr = calcDate.toISOString().slice(0, 10);
+  // 3. Final UTC start point anchored directly to Nairobi's offset
+  const start = new Date(`${targetDateStr}T00:00:00+03:00`);
   
-  // 3. Convert the localized date string back to a true UTC point in time
-  // Apply the Nairobi offset (+03:00) so the Date constructor anchors it correctly.
-  const start = new Date(`${finalStartStr}T00:00:00+03:00`);
-
   const labels = { day: 'Today', month: 'This Month', week: 'Last 7 Days' };
-  
   return { 
     start, 
-    end: now, // Current UTC time
+    end: now, 
     label: labels[timeframe] || labels.week 
   };
 };
@@ -116,15 +117,17 @@ const buildTrend = async (timeframe, range, cashierId) => {
 
   // O(7) or O(30) scaffold fill — no financial math.
   return Array.from({ length: timeframe === 'month' ? 30 : 7 }, (_, i) => {
-    const day = new Date(range.start); // Start from Nairobi midnight
-    day.setUTCDate(day.getUTCDate() + i); // Increment by 1 UTC day at a time
+    // Use explicit millisecond addition (86400000ms = 1 day) from the absolute range.start
+    const day = new Date(range.start.getTime() + (i * 86400000));
     
-    const isoDate = day.toISOString().slice(0, 10);
+    // Format to Nairobi ISO string (YYYY-MM-DD) for database matching
+    const isoDate = day.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
     const match = rows.find((r) => toIso10(r.day) === isoDate);
     
     return {
       key: i,
       label: day.toLocaleDateString('en-US', { 
+        timeZone: 'Africa/Nairobi',
         weekday: timeframe === 'month' ? undefined : 'short',
         day: 'numeric',
         month: 'short'
