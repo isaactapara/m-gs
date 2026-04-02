@@ -14,39 +14,29 @@ const REPORT_TIMEZONE = 'Africa/Nairobi';
 const getDateRange = (timeframe) => {
   const now = new Date();
 
-  // 1. Get the current date in Nairobi
-  const nairobiParts = new Intl.DateTimeFormat('en-US', {
-    timeZone: REPORT_TIMEZONE,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-  }).formatToParts(now);
+  // 1. Get Nairobi's current date components accurately using ISO format (en-CA)
+  const nairobiStr = now.toLocaleDateString('en-CA', { timeZone: REPORT_TIMEZONE }); // Returns "YYYY-MM-DD"
+  const [year, month, day] = nairobiStr.split('-').map(Number);
 
-  const parts = nairobiParts.reduce((acc, part) => {
-    acc[part.type] = part.value;
-    return acc;
-  }, {});
+  // 2. Create a Date object representing Midnight in Nairobi
+  // We construct this by telling JS: "Create a date at these coordinates in Nairobi time"
+  const nairobiMidnight = new Date(now.toLocaleString('en-US', { timeZone: REPORT_TIMEZONE }));
+  nairobiMidnight.setHours(0, 0, 0, 0);
 
-  // 2. Create a date object for Nairobi Midnight (00:00:00)
-  // This is a "local-looking" date used for calculation
-  let startLocal = new Date(
-    parseInt(parts.year),
-    parseInt(parts.month) - 1,
-    parseInt(parts.day),
-    0, 0, 0, 0
-  );
-
+  // 3. Adjust for 'week' or 'month' from the Nairobi perspective
   if (timeframe === 'month') {
-    startLocal.setDate(1);
+    nairobiMidnight.setDate(1);
   } else if (timeframe === 'week') {
-    startLocal.setDate(startLocal.getDate() - 6);
+    nairobiMidnight.setDate(nairobiMidnight.getDate() - 6);
   }
 
-  // 3. Convert that "local" midnight to a real UTC Date object
-  // We format the local date as a string and re-parse it as Nairobi time to get the true UTC offset
-  const start = new Date(startLocal.toLocaleString('en-US', { timeZone: REPORT_TIMEZONE }));
-
+  // 4. Convert the local midnight back to a true UTC point in time
+  // This is the CRITICAL STEP: finding the UTC equivalent of that localized midnight string
+  const start = new Date(nairobiMidnight.toLocaleString('en-US', { timeZone: 'UTC' }));
+  
+  // Note: 'end' remains 'now' (UTC) to capture everything up to this exact moment.
   const labels = { day: 'Today', month: 'This Month', week: 'Last 7 Days' };
+  
   return { 
     start, 
     end: now, 
