@@ -230,7 +230,15 @@ function attachListeners() {
   if (passwordForm) {
     passwordForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
       const username = document.getElementById('updateUsername').value.trim();
+
+      const button = event.submitter;
+      const originalText = button.innerHTML;
+      button.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> UPDATING...`;
+      button.disabled = true;
+      createIcons({ icons });
       
       try {
         await store.apiClient.patch('/auth/change-password', { currentPassword, newPassword, username });
@@ -241,11 +249,11 @@ function attachListeners() {
       } catch (error) {
         passwordFeedback.textContent = error.response?.data?.error?.message || error.message || 'Update failed.';
         passwordFeedback.className = 'text-xs font-bold p-3 rounded-xl bg-red-50 text-red-600 dark:bg-red-500/10 block';
+      } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        createIcons({ icons });
       }
-
-      button.innerHTML = originalText;
-      button.disabled = false;
-      createIcons({ icons });
     });
   }
 }

@@ -137,6 +137,10 @@ const getUsers = asyncHandler(async (req, res) => {
 const updatePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword, username } = req.body;
 
+  if (!currentPassword) {
+    throw new AppError('Current password is required', 400, 'PASSWORD_REQUIRED');
+  }
+
   if (!newPassword || newPassword.length < 6) {
     throw new AppError('Password must be at least 6 characters long', 400, 'WEAK_PASSWORD');
   }

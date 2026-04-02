@@ -9,6 +9,7 @@ let isAddItemOpen = false;
 let editingItem = null;
 let paymentMethod = 'M-Pesa';
 let menuEditMode = false;
+let paymentStatus = 'idle'; // idle, success, error
 
 
 
@@ -332,6 +333,9 @@ function renderMenu() {
 let isGlobalListenerAttached = false;
 
 function handleMenuClicks(e) {
+  // 1. Specific Button Actions (Priority)
+  // ---------------------------------
+  
   // Category Filter
   const categoryBtn = e.target.closest('.js-set-category');
   if (categoryBtn) {
@@ -368,11 +372,10 @@ function handleMenuClicks(e) {
     return;
   }
 
-  // Add Item to Cart
+  // Add Item specifically via Button
   const addBtn = e.target.closest('.js-handle-add');
-  const menuCard = e.target.closest('.js-menu-item');
-  if (addBtn || menuCard) {
-    const itemId = (addBtn || menuCard).closest('[data-id]').getAttribute('data-id');
+  if (addBtn) {
+    const itemId = addBtn.closest('[data-id]').getAttribute('data-id');
     window.handleAdd(itemId);
     return;
   }
@@ -410,6 +413,17 @@ function handleMenuClicks(e) {
   // Close Modal Overlay / Button
   if (e.target.closest('.js-close-add-item')) {
     window.closeAddItemModal();
+    return;
+  }
+
+  // 2. Generic Card Click (Lowest Priority)
+  // ---------------------------------------
+  const menuCard = e.target.closest('.js-menu-item');
+  if (menuCard) {
+    // Only trigger if we didn't click inside a control container already handled
+    // (Though 'return' statements above already handle this, this is extra safety)
+    const itemId = menuCard.getAttribute('data-id');
+    window.handleAdd(itemId);
     return;
   }
 }
@@ -512,12 +526,23 @@ window.submitOrder = async (targetStatus = 'PAID') => {
   };
 
   try {
+    paymentStatus = 'idle';
     await store.createBill(billData);
+    paymentStatus = 'success';
     store.clearCart();
-    // Optimistic UI in billingStore already triggered a notify() — no extra reRender needed.
+    reRender();
+    setTimeout(() => {
+      paymentStatus = 'idle';
+      reRender();
+    }, 3000);
   } catch (err) {
     console.error('Submit Order Error:', err);
+    paymentStatus = 'error';
     reRender();
+    setTimeout(() => {
+      paymentStatus = 'idle';
+      reRender();
+    }, 3000);
   }
 };
 
