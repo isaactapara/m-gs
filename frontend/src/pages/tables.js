@@ -295,29 +295,37 @@ function attachDragListeners() {
   const handleMouseMove = (e) => {
     if (isEditMode && draggingTableId) {
       const rect = canvas.getBoundingClientRect();
-      let x = e.clientX - rect.left - dragOffsetX;
-      let y = e.clientY - rect.top - dragOffsetY;
+      const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+      const clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
       
-      const TABLE_SIZE = 112; // width-28 & height-28 in tailwind
+      let x = clientX - rect.left - dragOffsetX;
+      let y = clientY - rect.top - dragOffsetY;
+      
+      const TABLE_SIZE = 112; 
       const maxW = Math.max(rect.width, 800) - TABLE_SIZE;
       const maxH = Math.max(rect.height, 600) - TABLE_SIZE;
       
       x = Math.max(20, Math.min(x, maxW));
-      y = Math.max(100, Math.min(y, maxH)); // 100px clearance keeps it safely below the Floor Plan header!
+      y = Math.max(100, Math.min(y, maxH)); 
       
       const el = document.querySelector(`.table-btn[data-id="${draggingTableId}"]`);
       if (el) {
         el.style.left = `${x}px`;
         el.style.top = `${y}px`;
       }
+      
+      if (e.type === 'touchmove') e.preventDefault();
     }
   };
 
   const handleMouseUp = (e) => {
     if (isEditMode && draggingTableId) {
       const rect = canvas.getBoundingClientRect();
-      let x = e.clientX - rect.left - dragOffsetX;
-      let y = e.clientY - rect.top - dragOffsetY;
+      const clientX = e.type.startsWith('touch') ? e.changedTouches[0].clientX : e.clientX;
+      const clientY = e.type.startsWith('touch') ? e.changedTouches[0].clientY : e.clientY;
+      
+      let x = clientX - rect.left - dragOffsetX;
+      let y = clientY - rect.top - dragOffsetY;
       
       const TABLE_SIZE = 112;
       const maxW = Math.max(rect.width, 800) - TABLE_SIZE;
@@ -328,9 +336,11 @@ function attachDragListeners() {
       
       store.updateTablePosition(draggingTableId, x, y);
       draggingTableId = null;
+      
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      // We don't need to reRender because the position was already updated visually and stored in the data store.
+      document.removeEventListener('touchmove', handleMouseMove);
+      document.removeEventListener('touchend', handleMouseUp);
     }
   };
 
@@ -346,6 +356,24 @@ function attachDragListeners() {
         dragOffsetX = e.clientX - rect.left;
         dragOffsetY = e.clientY - rect.top;
         
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.addEventListener('touchmove', handleMouseMove, { passive: false });
+        document.addEventListener('touchend', handleMouseUp);
+      }
+    });
+
+    btn.addEventListener('touchstart', (e) => {
+      if (e.target.closest('button')) return;
+
+      if (isEditMode) {
+        draggingTableId = btn.getAttribute('data-id');
+        const rect = btn.getBoundingClientRect();
+        dragOffsetX = e.touches[0].clientX - rect.left;
+        dragOffsetY = e.touches[0].clientY - rect.top;
+        
+        document.addEventListener('touchmove', handleMouseMove, { passive: false });
+        document.addEventListener('touchend', handleMouseUp);
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
       }

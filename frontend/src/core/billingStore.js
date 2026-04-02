@@ -267,6 +267,16 @@ export class BillingStore {
     return data;
   }
 
+  async updateUserRole(id, role) {
+    const data = await this.rootStore.apiClient.patch(`/auth/users/${id}/role`, { role });
+    const index = this.users.findIndex((user) => user._id === id || user.id === id);
+    if (index > -1) {
+      this.users[index].role = data.role;
+      this.rootStore.notify();
+    }
+    return data;
+  }
+
 
   async fetchReportSummary(timeframe = 'week') {
     const data = await this.rootStore.apiClient.get(`/reports/summary?timeframe=${encodeURIComponent(timeframe)}`);

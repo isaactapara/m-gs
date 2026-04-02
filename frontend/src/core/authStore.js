@@ -55,11 +55,17 @@ export class AuthStore {
     this.currentUser = null;
     this.userRole = null;
     this.clearSession();
+    
+    // Nuclear option to ensure no stale data remains in any store
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear();
+    }
+    
     this.rootStore.paymentStore.stopAllPolling({ message: 'Polling cancelled after logout.' });
     this.rootStore.notify();
 
     if (redirect) {
-      window.location.href = '/login.html';
+      window.location.replace('/login.html');
     }
   }
 

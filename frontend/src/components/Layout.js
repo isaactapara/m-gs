@@ -1,18 +1,7 @@
 import { store } from '../core/store.js';
 import { createIcons, icons } from 'lucide';
 
-window.toggleSidebar = () => {
-  const sidebar = document.getElementById('main-sidebar');
-  const overlay = document.getElementById('mobile-sidebar-overlay');
-  
-  if (sidebar.classList.contains('-translate-x-full')) {
-    sidebar.classList.remove('-translate-x-full');
-    overlay.classList.remove('hidden');
-  } else {
-    sidebar.classList.add('-translate-x-full');
-    overlay.classList.add('hidden');
-  }
-};
+// Sidebar toggle logic is now encapsulated in initLayoutListeners
 
 export function renderLayout(contentHtml, currentPage = '/') {
   const isDarkMode = store.isDarkMode;
@@ -153,18 +142,28 @@ export function renderLayout(contentHtml, currentPage = '/') {
 }
 
 export function initLayoutListeners() {
-  setTimeout(() => {
-    // Register custom primary menu icon if not exists
-    if (!icons.menu) {
-      icons.menuPrimary = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="15" y2="6"></line><line x1="3" y1="18" x2="18" y2="18"></line></svg>`;
-    }
+  window.toggleSidebar = () => {
+    const sidebar = document.getElementById('main-sidebar');
+    const overlay = document.getElementById('mobile-sidebar-overlay');
+    if (!sidebar || !overlay) return;
     
-    createIcons({ 
-      icons: {
-        ...icons,
-        'menu-primary': icons.menu
-      } 
-    });
+    if (sidebar.classList.contains('-translate-x-full')) {
+      sidebar.classList.remove('-translate-x-full');
+      overlay.classList.remove('hidden');
+    } else {
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+    }
+  };
+
+  setTimeout(() => {
+    // Custom icons configuration
+    const customIcons = {
+      ...icons,
+      'menu-primary': `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="15" y2="6"></line><line x1="3" y1="18" x2="18" y2="18"></line></svg>`
+    };
+    
+    createIcons({ icons: customIcons });
     
     const collapseBtn = document.getElementById('toggle-desktop-sidebar');
     if(collapseBtn) {
@@ -177,9 +176,11 @@ export function initLayoutListeners() {
     if(themeBtn) {
       themeBtn.addEventListener('click', () => {
         store.toggleDarkMode();
+        // Force Tailwind utility updates
+        document.documentElement.classList.toggle('dark', store.isDarkMode);
       });
     }
-
+    
     const logoutBtn = document.getElementById('logout-btn');
     if(logoutBtn) {
       logoutBtn.addEventListener('click', () => {

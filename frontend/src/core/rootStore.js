@@ -187,6 +187,8 @@ export class RootStore {
   }
   async addUser(username, pin) { return this.billingStore.addUser(username, pin); }
   async deleteUser(id) { return this.billingStore.deleteUser(id); }
+  async toggleUserStatus(id) { return this.billingStore.toggleUserStatus(id); }
+  async updateUserRole(id, role) { return this.billingStore.updateUserRole(id, role); }
   async fetchReportSummary(timeframe) { return this.billingStore.fetchReportSummary(timeframe); }
   async fetchAllSummaries() { return this.billingStore.fetchAllSummaries(); }
 

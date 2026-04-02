@@ -47,11 +47,21 @@ function renderSettings() {
             <div class="space-y-4">
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Current Password</label>
-                <input id="currentPassword" type="password" required class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <div class="relative">
+                  <input id="currentPassword" type="password" required class="w-full pl-4 pr-12 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                  <button type="button" onclick="window.togglePasswordVisibility('currentPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF0000] transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                  </button>
+                </div>
               </div>
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New Password</label>
-                <input id="newPassword" type="password" required minlength="6" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <div class="relative">
+                  <input id="newPassword" type="password" required minlength="6" class="w-full pl-4 pr-12 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                  <button type="button" onclick="window.togglePasswordVisibility('newPassword')" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF0000] transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -78,7 +88,12 @@ function renderSettings() {
               </div>
               <div class="space-y-2">
                 <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Password (at least 6 characters)</label>
-                <input id="newPasswordInput" required type="password" minlength="6" placeholder="Enter password" class="w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                <div class="relative">
+                  <input id="newPasswordInput" required type="password" minlength="6" placeholder="Enter password" class="w-full pl-4 pr-12 py-3 rounded-2xl text-sm font-bold transition-all focus:ring-2 focus:ring-[#FF0000] focus:outline-none ${isDarkMode ? 'bg-black text-white border border-[#111]' : 'bg-gray-50 text-gray-900 border-transparent'}" />
+                  <button type="button" onclick="window.togglePasswordVisibility('newPasswordInput')" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#FF0000] transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -116,6 +131,9 @@ function renderSettings() {
                     ${user.role !== 'owner' ? `
                       <button onclick="window.toggleUserStatus('${user.id}')" class="p-3 ${user.isActive ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-500/10' : 'bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10'} rounded-2xl transition-all shadow-sm" title="${user.isActive ? 'Suspend' : 'Activate'}">
                         <i data-lucide="${user.isActive ? 'user-minus' : 'user-check'}" class="w-5 h-5"></i>
+                      </button>
+                      <button onclick="window.updateUserRole('${user.id}', '${user.role === 'owner' ? 'cashier' : 'owner'}')" class="p-3 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 rounded-2xl transition-all shadow-sm" title="${user.role === 'owner' ? 'Demote to Cashier' : 'Promote to Owner'}">
+                        <i data-lucide="${user.role === 'owner' ? 'arrow-down-circle' : 'arrow-up-circle'}" class="w-5 h-5"></i>
                       </button>
                       <button onclick="window.deleteUser('${user.id}')" class="p-3 bg-red-50 text-[#FF0000] hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 rounded-2xl transition-all shadow-sm" title="Delete Cashier">
                         <i data-lucide="trash-2" class="w-5 h-5"></i>
@@ -229,6 +247,31 @@ window.toggleUserStatus = async (id) => {
 window.deleteUser = async (id) => {
   await store.deleteUser(id);
   renderSettings();
+};
+
+window.togglePasswordVisibility = (id) => {
+  const input = document.getElementById(id);
+  const btn = input?.nextElementSibling;
+  if (input) {
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    if (btn) {
+      const icon = btn.querySelector('i');
+      if (icon) {
+        icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+        createIcons({ icons });
+      }
+    }
+  }
+};
+
+window.updateUserRole = async (id, role) => {
+  try {
+    await store.updateUserRole(id, role);
+    renderSettings();
+  } catch (err) {
+    console.error('Failed to update user role:', err);
+  }
 };
 
 store.subscribe(renderSettings);

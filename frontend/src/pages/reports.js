@@ -28,10 +28,18 @@ const TIMEFRAME_LABELS = { day: 'Today', week: 'Last 7 Days', month: 'This Month
 const loadAllData = async () => {
   if (store.userRole !== 'owner') return;
 
+  // Optimistic rendering if cache exists
+  if (store.reportSummary) {
+     allData = store.reportSummary;
+     trendData = allData[histogramTimeframe]?.trend || [];
+     isInitialLoad = false;
+     renderReports();
+  }
+
   loadError = '';
   try {
     allData = await store.fetchAllSummaries();
-    // Initialise histogram with the current selector setting
+    // Cache management is handled by the store.notify() inside fetchAllSummaries
     trendData = allData[histogramTimeframe]?.trend || [];
   } catch (err) {
     loadError = err.response?.data?.error?.message || err.message || 'Failed to load analytics.';
@@ -108,7 +116,7 @@ window.exportToPDF = async () => {
     doc.setFontSize(10); doc.setTextColor(0, 0, 0);
     doc.text('RESTAURANT ANALYTICS', titleX, margins + 19);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(120, 120, 120);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, titleX, margins + 24);
+    doc.text(`Generated: ${new Date().toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })}`, titleX, margins + 24);
 
     let yPos = margins + 38;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(14); doc.setTextColor(0, 0, 0);
