@@ -198,7 +198,7 @@ function renderHome() {
                 <tr class="border-b dark:border-gray-950">
                   <th class="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Ref No.</th>
                   <th class="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Method</th>
-                  <th class="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Transaction ID</th>
+                  <th class="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-500">Order Details</th>
                   <th class="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Amount</th>
                   <th class="pb-3 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Time</th>
                 </tr>
@@ -209,7 +209,7 @@ function renderHome() {
                     <td class="py-4 font-bold text-sm">#${bill.billNumber}</td>
                     <td class="py-4 text-xs font-bold">${bill.paymentMethod}</td>
                     <td class="py-4 text-[10px] font-mono font-bold tracking-tight text-red-600/70 bg-red-50/30 dark:bg-black border dark:border-gray-900 rounded-lg px-3 text-center">
-                      ${bill.mpesaReceiptNumber || '—'}
+                      ${bill.items && bill.items.length > 0 ? bill.items.map(item => `${item.quantity || 1} ${item.name || item.itemName}`).join(', ') : 'Empty Order'}
                     </td>
                     <td class="py-4 text-right font-black text-gray-600 dark:text-gray-300">${settings.currency} ${bill.total.toFixed(2)}</td>
                     <td class="py-4 text-right text-[10px] font-bold text-gray-400">

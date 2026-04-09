@@ -87,7 +87,7 @@ function renderBills() {
                 <th class="px-6 py-4 px-2">Date & Time</th>
                 <th class="px-6 py-4 px-2">Items</th>
                 <th class="px-6 py-4 px-2">Payment</th>
-                <th class="px-6 py-4 px-2 text-[#FF0000]">Transaction ID</th>
+                <th class="px-6 py-4 px-2 text-[#FF0000]">Order Details</th>
                 <th class="px-6 py-4 px-2">Total Amount</th>
                 <th class="px-6 py-4 px-2">Time</th>
                 <th class="px-6 py-4 px-2">Status</th>
@@ -125,7 +125,7 @@ function renderBills() {
                   </td>
                   <td class="px-6 py-5">
                     <span class="text-[10px] font-mono font-bold tracking-tight text-red-600/70 bg-red-50/30 dark:bg-red-900/10 rounded px-2 py-1">
-                      ${bill.mpesaReceiptNumber || '—'}
+                      ${bill.items && bill.items.length > 0 ? bill.items.map(item => `${item.quantity || 1} ${item.name || item.itemName}`).join(', ') : 'Empty Order'}
                     </span>
                   </td>
                   <td class="px-6 py-5 px-2">
